@@ -326,6 +326,7 @@ public partial class MainWindow : Window
             controlledDevice = null;
             sensorValidAfter = clock.Elapsed;
             controller.InvalidateConnection();
+            windowsCpuClock.Stop();
             Refresh();
         });
     }
@@ -367,6 +368,7 @@ public partial class MainWindow : Window
         tray.Dispose();
         telemetry.Request(TelemetryRequest.None);
         fpsCapture.StopForExit();
+        windowsCpuClock.Stop();
         SaveHistoryOnExit();
     }
 }

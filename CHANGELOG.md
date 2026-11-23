@@ -1,5 +1,9 @@
 # Release notes
 
+## 1.0.8
+
+- Fixed the desktop overlay’s CPU clock staying at the Windows-reported base frequency on some laptops. When hardware clock readings are unavailable, the overlay uses a Windows performance-counter estimate that follows boost and marks it with **≈**. The estimate works with standard permissions.
+
 ## 1.0.7
 
 - Replaced the administrator launch options with one **Enable sensor and FPS access** setting in the MSI-installed app. Existing helper approvals carry over, and older elevated sign-in tasks migrate to standard startup with on-demand access.

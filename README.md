@@ -2,7 +2,7 @@
 
 An open-source Windows 11 x64 app for the **Llano V12 Ultra** laptop cooling pad. Control the external fan and RGB lighting over USB, see how cooling responds to CPU and GPU temperatures, and keep an eye on performance with a compact desktop overlay.
 
-**[Download the Windows MSI](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.7/LlanoUltraControl-1.0.7-win-x64.msi)** · **[Download the portable ZIP](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.7/LlanoUltraControl-1.0.7-win-x64-portable.zip)** · [Release notes and checksums](https://github.com/jsculli0n/llano-ultra-control/releases/latest)
+**[Download the Windows MSI](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.8/LlanoUltraControl-1.0.8-win-x64.msi)** · **[Download the portable ZIP](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.8/LlanoUltraControl-1.0.8-win-x64-portable.zip)** · [Release notes and checksums](https://github.com/jsculli0n/llano-ultra-control/releases/latest)
 
 ![Cooling dashboard in Ember Red with the Balanced preset, cooler RPM, CPU and GPU temperatures, and cooling history](docs/images/cooling.png)
 

@@ -96,14 +96,14 @@ internal sealed class StatsOverlayWindow : Window
         Position();
     }
 
-    public void SetReading(StatsMetrics metric, double? value)
+    public void SetReading(StatsMetrics metric, double? value, bool estimated = false)
     {
         if (!values.TryGetValue(metric, out var cell)) return;
         cell.Text.Text = value is not double number ? "—" : cell.Unit switch
         {
             "%" => $"{number:0}%",
             "°C" => $"{number:0}°C",
-            "GHz" => $"{number:0.00}GHz",
+            "GHz" => $"{(estimated ? "≈" : "")}{number:0.00}GHz",
             "" => $"{number:0}",
             _ => $"{number:0} RPM"
         };

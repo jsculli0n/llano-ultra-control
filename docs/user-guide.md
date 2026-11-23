@@ -24,7 +24,7 @@ Connect the cooler’s power adapter and USB data cable. Turn the cooler on and 
 - **CPU temperature unavailable.** Enable sensor and FPS access, then check **Settings → Diagnostics** for the sensor source. Some laptops need optional [PawnIO](https://pawnio.eu/) or can get temperature readings from HWiNFO with **Shared Memory Support** enabled. Manual speed works when the cooler is reachable over USB.
 - **Resume cooling at sign-in.** Temperature-based profiles wait for five seconds of fresh readings before taking control. A preset still responds to sustained critical heat.
 - **Updates.** Select **Settings → About → Check for updates**. If a newer version is available, open the GitHub release page to download it.
-- **Desktop stats.** Go to **Settings → Stats overlay** to choose grouped readings, opacity, colours, position, layout, and text size. The click-through overlay stays visible while the app is in the notification area. **FPS** uses the bundled PresentMon console helper for the foreground app and may need administrator access. CPU clock uses the Windows-reported frequency when a hardware reading is unavailable.
+- **Desktop stats.** Go to **Settings → Stats overlay** to choose grouped readings, opacity, colours, position, layout, and text size. The click-through overlay stays visible while the app is in the notification area. **FPS** uses the bundled PresentMon console helper for the foreground app and may need administrator access. CPU clock prefers hardware readings. An **≈** before the GHz value indicates a Windows performance-counter estimate, which can track boost without administrator access.
 - **Turn the cooler off at shutdown and on at sign-in.** This is off by default and also applies when restarting Windows. Keep the app running for shutdown and enable **Start in tray at sign-in** under **Settings → General** so the app can turn the cooler on. The app waits up to 45 seconds for the cooler to respond over USB after sign-in.
 - **Themes and tray.** Switch themes or change what closing the window does under **Settings → General**. The app closes to the tray by default. Use the tray menu to reopen it or exit.
 - **Simulation.** Enable it in **Settings → Diagnostics** and use **Simulation inputs** on Cooling. The app reads USB status without writing settings while in simulation.
@@ -34,7 +34,7 @@ Connect the cooler’s power adapter and USB data cable. Turn the cooler on and 
 The ZIP and MSI are unsigned. Windows may display a warning or block them under a local security policy. Download from the project’s release and compare the SHA-256 value with `SHA256SUMS.txt`. [Microsoft SmartScreen guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
 
 ```powershell
-Get-FileHash .\LlanoUltraControl-1.0.7-win-x64-portable.zip -Algorithm SHA256
+Get-FileHash .\LlanoUltraControl-1.0.8-win-x64-portable.zip -Algorithm SHA256
 ```
 
 ## Uninstall

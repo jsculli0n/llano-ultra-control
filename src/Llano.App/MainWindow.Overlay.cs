@@ -10,6 +10,7 @@ public partial class MainWindow
     private StatsOverlayWindow? statsOverlay;
     private bool loadingOverlay;
     private readonly FpsCapture fpsCapture = new();
+    private readonly WindowsCpuClock windowsCpuClock = new();
 
     private void InitializeOverlayPreferences()
     {
@@ -71,6 +72,10 @@ public partial class MainWindow
     {
         var options = settings.StatsOverlay;
         bool captureFps = WantsFps;
+        bool showCpuClock = options.Enabled && options.Metrics.HasFlag(StatsMetrics.CpuClock);
+        double? hardwareCpuClock = showCpuClock ? ReadHardwareCpuClock(readings) : null;
+        bool estimateCpuClock = showCpuClock && !simulate && hardwareCpuClock is null;
+        if (!estimateCpuClock) windowsCpuClock.Stop();
         fpsCapture.SetEnabled(captureFps && !UseTelemetryHelper);
         var helper = UseTelemetryHelper ? telemetry.Snapshot?.Reply : null;
         FpsStatus.Text = !captureFps ? "" : UseTelemetryHelper ? helper?.FpsStatus ?? telemetry.Status ?? "Starting the telemetry helper…" :
@@ -92,11 +97,10 @@ public partial class MainWindow
         statsOverlay.SetReading(StatsMetrics.CpuUsage, Find(Component.Cpu, "%", "CPU Total", cpu?.Hardware)?.Value);
         statsOverlay.SetReading(StatsMetrics.GpuUsage, gpuUsage?.Value);
         statsOverlay.SetReading(StatsMetrics.MemoryUsage, Find(Component.Memory, "%", "Memory")?.Value);
-        if (options.Metrics.HasFlag(StatsMetrics.CpuClock))
+        if (showCpuClock)
         {
-            double? cpuClock = ReadHardwareCpuClock(readings);
-            if (!simulate && cpuClock is null) cpuClock = WindowsCpuClock.ReadMhz();
-            statsOverlay.SetReading(StatsMetrics.CpuClock, cpuClock / 1000);
+            double? cpuClock = estimateCpuClock ? windowsCpuClock.ReadMhz() : hardwareCpuClock;
+            statsOverlay.SetReading(StatsMetrics.CpuClock, cpuClock / 1000, estimated: estimateCpuClock);
         }
         statsOverlay.SetReading(StatsMetrics.GpuClock, Find(Component.Gpu, "MHz", "GPU Core", gpuHardware)?.Value / 1000);
         if (!statsOverlay.IsVisible) statsOverlay.Show();

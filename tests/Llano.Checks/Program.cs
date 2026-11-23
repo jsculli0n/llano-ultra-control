@@ -204,13 +204,12 @@ try
     var store = new SettingsStore(testSettings, limits);
     Equal("Balanced", store.Load().SelectedProfile, "default settings");
     Equal(false, store.Load().PowerOffAtShutdown, "cooler shutdown behavior is opt-in");
-    File.WriteAllText(testSettings, """{"Version":1,"Profiles":[{"Name":"Legacy"}],"SelectedProfile":"Legacy","ManualRpm":1400}""");
+    File.WriteAllText(testSettings, """{"Version":1,"Profiles":[{"Name":"Legacy"}],"SelectedProfile":"Legacy","ManualRpm":1400,"RequestAdministratorOnLaunch":true}""");
     var legacy = store.Load();
     Equal("Legacy", legacy.SelectedProfile, "preserve the saved legacy profile");
     Equal(1400, legacy.ManualRpm, "preserve legacy cooling preferences");
     Equal(AppTheme.EmberRed, legacy.Theme, "legacy settings use the default theme");
     Equal(true, legacy.CloseToTray, "legacy settings preserve close-to-tray");
-    Equal(false, legacy.RequestAdministratorOnLaunch, "existing settings do not request administrator access automatically");
     foreach (var theme in Enum.GetValues<AppTheme>())
     {
         store.Save(legacy with { Theme = theme, CloseToTray = false });
@@ -218,6 +217,8 @@ try
         Equal(theme, restored.Theme, "persist each app theme");
         Equal(false, restored.CloseToTray, "persist close-to-tray preference");
     }
+    Equal(false, File.ReadAllText(testSettings).Contains("RequestAdministratorOnLaunch", StringComparison.Ordinal),
+        "ignore the retired permission setting while preserving other preferences");
     var lighting = new Lighting(true, LightingEffect.Breathing, "#123456", 60);
     store.Save(new AppSettings { Profiles = [separate with { Name = "Gaming", Lighting = lighting }], SelectedProfile = "Gaming", ResumeAtSignIn = true });
     var loaded = store.Load();
@@ -227,12 +228,11 @@ try
     Equal(true, loaded.ResumeAtSignIn, "persist sign-in selection");
     var newLight = new Lighting(true, LightingEffect.ColorChase, V12UltraStatus.Palette[0], 40, 3);
     store.Save(loaded with { LastCoolingMode = CoolingMode.Manual, ManualRpm = 1400, LastLighting = newLight, PowerOffAtShutdown = true,
-        RequestAdministratorOnLaunch = true, LightingPresets = [new("Evening", newLight)] });
+        LightingPresets = [new("Evening", newLight)] });
     var updated = store.Load();
     Equal(CoolingMode.Manual, updated.LastCoolingMode, "persist last cooling mode");
     Equal(1400, updated.ManualRpm, "persist selected manual speed");
     Equal(true, updated.PowerOffAtShutdown, "persist cooler shutdown preference");
-    Equal(true, updated.RequestAdministratorOnLaunch, "persist administrator launch preference");
     Equal(newLight, updated.LastLighting, "persist last lighting look");
     Equal(new LightingPreset("Evening", newLight), updated.LightingPresets.Single(), "persist a custom lighting preset");
     store.Save(new());

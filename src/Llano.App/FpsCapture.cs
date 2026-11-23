@@ -107,7 +107,10 @@ internal sealed class FpsCapture(bool helperSession = false)
                 string diagnostic = await errors;
                 Debug.WriteLine(diagnostic);
                 Volatile.Write(ref status, diagnostic.Contains("access denied", StringComparison.OrdinalIgnoreCase)
-                    ? "Windows denied FPS capture. Restart the app as administrator from Settings → General."
+                    ? StartupRegistration.IsElevated ? "Windows denied access to FPS capture."
+                        : StartupRegistration.IsInstalled
+                        ? "Windows denied FPS capture. Go to Settings → General and enable sensor and FPS access."
+                        : "Windows denied FPS capture. Install the MSI to enable sensor and FPS access."
                     : "PresentMon capture stopped. Toggle FPS off and on to retry.");
             }
             finally

@@ -24,9 +24,15 @@ public partial class MainWindow
     private void UpdateHelperStatus()
     {
         TelemetrySetup.IsEnabled = StartupRegistration.IsInstalled && !helperConfiguring;
-        TelemetrySetup.Content = helperEnabled ? "Disable telemetry helper" : "Set up telemetry helper";
-        TelemetryState.Text = !StartupRegistration.IsInstalled ? "Available with the MSI installation." :
-            telemetry.Status ?? (helperEnabled ? "Authorized. Starts when readings need it." : "One Windows approval enables CPU readings and FPS on demand.");
+        TelemetrySetup.Content = helperEnabled ? "Disable sensor and FPS access" : "Enable sensor and FPS access";
+        TelemetryState.Text = !StartupRegistration.IsInstalled ? "Install the MSI to enable background sensor and FPS access." :
+            telemetry.Status ?? (helperEnabled ? "Enabled. CPU readings and FPS are requested as needed." :
+                "Approve once in Windows to enable CPU temperature, CPU clock and FPS on demand.");
+        SensorAccessSettings.Visibility = VisibilityFor(!runningAsAdministrator && !helperEnabled);
+        CpuAccessHelp.Text = runningAsAdministrator || helperEnabled
+            ? "CPU temperature depends on hardware and driver support. Check Settings → Diagnostics for your current sensor source."
+            : StartupRegistration.IsInstalled ? "Enable sensor and FPS access in Settings to try reading the CPU temperature."
+                : "Install the MSI to enable background CPU sensor access.";
     }
 
     private async void ConfigureTelemetry(object sender, RoutedEventArgs e)
@@ -38,12 +44,8 @@ public partial class MainWindow
         {
             await StartupRegistration.SetTelemetryAsync(!helperEnabled);
             helperEnabled = StartupRegistration.TelemetryEnabled();
-            if (helperEnabled && settings.RequestAdministratorOnLaunch)
-            {
-                Persist(settings with { RequestAdministratorOnLaunch = false });
-                AdministratorLaunch.IsChecked = false;
-            }
             TelemetryNotice.Text = "";
+            LoadStartupState();
             Refresh();
         }
         catch (Win32Exception error) when (error.NativeErrorCode == 1223)
@@ -62,19 +64,28 @@ public partial class MainWindow
         }
     }
 
+    private void OpenSensorAccessSettings(object sender, RoutedEventArgs e)
+    {
+        Navigation.SelectedItem = SettingsPage;
+        SettingsSections.SelectedIndex = 0;
+        TelemetrySetup.Focus();
+        TelemetrySetup.BringIntoView();
+    }
+
     private void UpdateTelemetry(SensorSnapshot local, TimeSpan now)
     {
         var request = TelemetryRequest.None;
-        bool localHasCpu = local.TemperatureSensors.Any(r => r.Component == Component.Cpu && r.Value.HasValue &&
-            TemperatureRank(r) < int.MaxValue && IsFresh(r));
         if (UseTelemetryHelper)
         {
+            bool localHasTemperature = local.TemperatureSensors.Any(r => r.Component == Component.Cpu && r.Value.HasValue &&
+                TemperatureRank(r) < int.MaxValue && IsFresh(r));
             var overlay = settings.StatsOverlay;
-            const StatsMetrics cpuMetrics = StatsMetrics.CpuTemperature | StatsMetrics.CpuClock | StatsMetrics.CpuUsage;
-            bool showCpu = IsVisible && WindowState != WindowState.Minimized ||
+            bool needTemperature = IsVisible && WindowState != WindowState.Minimized ||
                 runningProfile is { Mode: not FanMode.Fixed } && controller.Enabled ||
-                overlay.Enabled && (overlay.Metrics & cpuMetrics) != 0;
-            if (showCpu && !localHasCpu) request |= TelemetryRequest.Cpu;
+                overlay.Enabled && overlay.Metrics.HasFlag(StatsMetrics.CpuTemperature);
+            bool needClock = overlay.Enabled && overlay.Metrics.HasFlag(StatsMetrics.CpuClock);
+            if ((needTemperature && !localHasTemperature) || (needClock && ReadHardwareCpuClock(local.Readings) is null))
+                request |= TelemetryRequest.Cpu;
             if (WantsFps) request |= TelemetryRequest.Fps;
         }
         telemetry.Request(request);

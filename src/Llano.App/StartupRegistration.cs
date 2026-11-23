@@ -3,8 +3,6 @@ using System.Security.Principal;
 
 namespace Llano.App;
 
-internal enum StartupMode { Off, Standard, Elevated }
-
 internal static class StartupRegistration
 {
     private const string TaskPrefix = "LlanoUltraControl-";
@@ -33,45 +31,37 @@ internal static class StartupRegistration
         }
     }
 
-    public static StartupMode GetMode()
+    public static (bool Enabled, bool Elevated) GetStartup()
     {
         dynamic root = Root();
         try
         {
             dynamic task = root.GetTask(TaskPrefix + Sid);
-            return (bool)task.Enabled ? ((int)task.Definition.Principal.RunLevel == 1 ? StartupMode.Elevated : StartupMode.Standard)
-                : StartupMode.Off;
+            if (!IsOwnTask(task, "--tray")) throw new InvalidOperationException("An existing Windows task conflicts with Llano startup.");
+            return ((bool)task.Enabled, (int)task.Definition.Principal.RunLevel == 1);
         }
-        catch (Exception error) when (error.HResult == TaskNotFound) { return StartupMode.Off; }
+        catch (Exception error) when (error.HResult == TaskNotFound) { return default; }
     }
 
-    public static async Task SetAsync(StartupMode mode)
+    public static void SetAtSignIn(bool enabled)
     {
         if (!IsInstalled) throw new InvalidOperationException("Install the MSI to configure Windows startup.");
-        if (IsElevated || (mode != StartupMode.Elevated && GetMode() != StartupMode.Elevated))
-        {
-            Apply(mode);
-            return;
-        }
-
-        using var process = Process.Start(new ProcessStartInfo(InstalledPath, $"--configure-startup {Sid}:{mode}")
-        {
-            UseShellExecute = true,
-            Verb = "runas",
-            WorkingDirectory = Path.GetDirectoryName(InstalledPath)!
-        }) ?? throw new InvalidOperationException("Windows could not start the administrator setup.");
-        await process.WaitForExitAsync();
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException("Startup setup needs administrator approval from this Windows account.");
+        if (GetStartup().Elevated && !IsElevated)
+            throw new InvalidOperationException("Enable sensor and FPS access to update your previous sign-in task.");
+        ApplyStartup(enabled);
     }
 
-    public static bool ApplyElevatedCommand(string command)
+    public static void TryMigrateElevatedStartup()
     {
-        string[] parts = command.Split(':');
-        if (!IsInstalled || !IsElevated || parts.Length != 2 || parts[0] != Sid ||
-            !Enum.TryParse<StartupMode>(parts[1], out var mode) || !Enum.IsDefined(mode)) return false;
-        try { Apply(mode); return true; }
-        catch (Exception error) { Debug.WriteLine(error); return false; }
+        try
+        {
+            var startup = GetStartup();
+            if (!startup.Elevated) return;
+            // Keep sensor access for accounts that already approved elevated sign-in.
+            if (startup.Enabled && !TelemetryEnabled()) RegisterTelemetry();
+            ApplyStartup(startup.Enabled);
+        }
+        catch (Exception error) { Debug.WriteLine(error); }
     }
 
     public static bool TelemetryEnabled()
@@ -119,15 +109,19 @@ internal static class StartupRegistration
 
     private static void ApplyTelemetry(bool enabled)
     {
-        string sid = Sid;
-        string name = TelemetryPrefix + sid;
-        dynamic root = Root();
-        if (!enabled)
+        var startup = GetStartup();
+        if (startup.Elevated) ApplyStartup(startup.Enabled);
+        if (enabled) RegisterTelemetry();
+        else
         {
-            try { root.DeleteTask(name, 0); }
+            try { Root().DeleteTask(TelemetryPrefix + Sid, 0); }
             catch (Exception error) when (error.HResult == TaskNotFound) { }
-            return;
         }
+    }
+
+    private static void RegisterTelemetry()
+    {
+        string sid = Sid;
         dynamic task = Connect().NewTask(0);
         task.RegistrationInfo.Description = "Provides CPU sensor and FPS readings on demand to Llano Ultra Control.";
         task.Principal.UserId = sid;
@@ -143,7 +137,7 @@ internal static class StartupRegistration
         action.WorkingDirectory = Path.GetDirectoryName(InstalledPath);
         action.Arguments = TelemetryArgument;
         // The account can read and run the task. Changing its action requires elevation.
-        root.RegisterTaskDefinition(name, task, 6 | 16, sid, null, 3,
+        Root().RegisterTaskDefinition(TelemetryPrefix + sid, task, 6 | 16, sid, null, 3,
             $"O:BAG:BAD:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGX;;;{sid})");
     }
 
@@ -184,11 +178,12 @@ internal static class StartupRegistration
             string.Equals((string)actions[1].Arguments, argument, StringComparison.Ordinal);
     }
 
-    private static void Apply(StartupMode mode)
+    private static void ApplyStartup(bool enabled)
     {
         dynamic root = Root();
-        string name = TaskPrefix + Sid;
-        if (mode == StartupMode.Off)
+        string sid = Sid;
+        string name = TaskPrefix + sid;
+        if (!enabled)
         {
             try { root.DeleteTask(name, 0); }
             catch (Exception error) when (error.HResult == TaskNotFound) { }
@@ -198,20 +193,21 @@ internal static class StartupRegistration
         dynamic service = Connect();
         dynamic task = service.NewTask(0);
         task.RegistrationInfo.Description = "Launches Llano Ultra Control in the notification area at sign-in.";
-        task.Principal.UserId = Sid;
+        task.Principal.UserId = sid;
         task.Principal.LogonType = 3;
-        task.Principal.RunLevel = mode == StartupMode.Elevated ? 1 : 0;
+        task.Principal.RunLevel = 0;
         task.Settings.DisallowStartIfOnBatteries = false;
         task.Settings.StopIfGoingOnBatteries = false;
         task.Settings.ExecutionTimeLimit = "PT0S";
         task.Settings.MultipleInstances = 2;
         dynamic trigger = task.Triggers.Create(9);
-        trigger.UserId = Sid;
+        trigger.UserId = sid;
         dynamic action = task.Actions.Create(0);
         action.Path = InstalledPath;
         action.WorkingDirectory = Path.GetDirectoryName(InstalledPath);
         action.Arguments = "--tray";
-        root.RegisterTaskDefinition(name, task, 6, Sid, null, 3, null);
+        root.RegisterTaskDefinition(name, task, 6 | 16, sid, null, 3,
+            $"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;{sid})");
     }
 
     private static dynamic Root() => Connect().GetFolder("\\");

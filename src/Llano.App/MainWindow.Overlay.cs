@@ -94,11 +94,7 @@ public partial class MainWindow
         statsOverlay.SetReading(StatsMetrics.MemoryUsage, Find(Component.Memory, "%", "Memory")?.Value);
         if (options.Metrics.HasFlag(StatsMetrics.CpuClock))
         {
-            double? cpuClock = Find(Component.Cpu, "MHz", "Core Average")?.Value ??
-                Find(Component.Cpu, "MHz", "Average Core Clock")?.Value ??
-                readings.Where(r => r.Component == Component.Cpu && r.Unit == "MHz" && r.Value > 0 && IsFresh(r) &&
-                    (r.Name.StartsWith("CPU Core", StringComparison.OrdinalIgnoreCase) ||
-                     r.Name.StartsWith("Core #", StringComparison.OrdinalIgnoreCase))).Average(r => r.Value);
+            double? cpuClock = ReadHardwareCpuClock(readings);
             if (!simulate && cpuClock is null) cpuClock = WindowsCpuClock.ReadMhz();
             statsOverlay.SetReading(StatsMetrics.CpuClock, cpuClock / 1000);
         }
@@ -110,5 +106,14 @@ public partial class MainWindow
             readings.Where(r => r.Component == kind && r.Unit == unit && r.Name.Equals(name, StringComparison.OrdinalIgnoreCase) &&
                 r.Value.HasValue && IsFresh(r) && (hardware is null || r.Hardware == hardware))
                 .OrderBy(r => kind == Component.Gpu ? GraphicsPriority(r) : 0).FirstOrDefault();
+    }
+
+    private double? ReadHardwareCpuClock(IEnumerable<SensorReading> sensors)
+    {
+        var clocks = sensors.Where(r => r.Component == Component.Cpu && r.Unit == "MHz" && r.Value > 0 && IsFresh(r));
+        double? average = clocks.FirstOrDefault(r => r.Name.Equals("Core Average", StringComparison.OrdinalIgnoreCase) ||
+            r.Name.Equals("Average Core Clock", StringComparison.OrdinalIgnoreCase))?.Value;
+        return average ?? clocks.Where(r => r.Name.StartsWith("CPU Core", StringComparison.OrdinalIgnoreCase) ||
+            r.Name.StartsWith("Core #", StringComparison.OrdinalIgnoreCase)).Average(r => r.Value);
     }
 }

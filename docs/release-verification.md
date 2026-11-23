@@ -6,10 +6,10 @@ Use a clean Windows 11 x64 test machine or disposable VM. Keep a test copy of th
 
 - Compare the ZIP and MSI hashes against `SHA256SUMS.txt`. The ZIP and MSI are unsigned.
 - Extract the ZIP and launch it as a standard user without a separately installed .NET runtime. Check that cooling starts paused, startup is described as MSI-only, and the About documents open.
-- Install the MSI. Check the Start menu shortcut, version in About, and standard startup at sign-in. Verify that granting administrator startup is optional and can be undone.
+- Install the MSI. Check the Start menu shortcut, version in About, and standard startup at sign-in. Upgrade with a legacy elevated startup task and verify it switches to standard permissions when sensor and FPS access is enabled or on the next sign-in.
 - Install 0.7.0, create a named profile, choose a startup preference, and upgrade. Verify that the newer version preserves the profile and startup preference. The theme should default to Ember Red.
 - Uninstall and confirm the shortcuts, installed app, scheduled startup tasks, and the uninstalling account’s saved profiles and preferences are removed. Reinstall and check that it starts with the default settings.
-- In the MSI-installed app, set up the telemetry helper and approve the Windows prompt. Exit, reopen with standard permissions, and verify the helper connects without another prompt. Verify FPS where Windows permits capture and CPU readings on a system with a supported sensor driver. Disable the helper and verify the task is removed.
+- In the MSI-installed app, enable sensor and FPS access under **Settings → General** and approve the Windows prompt. Exit, reopen with standard permissions, and verify the helper connects without another prompt. Verify FPS where Windows permits capture and CPU readings on a system with a supported sensor driver. With local CPU temperature available, verify that requesting an unavailable CPU clock in the overlay also requests helper data. Disable access and verify the task is removed.
 
 ## Hardware and shutdown
 

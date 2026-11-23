@@ -323,8 +323,8 @@
           <Border x:Name="CpuAccessNotice" Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,11"
                   Padding="15,10" BorderBrush="{DynamicResource AccentBorder}" Visibility="Collapsed">
             <DockPanel>
-              <Button x:Name="SensorElevateButton" DockPanel.Dock="Right" Content="Restart as administrator"
-                      Click="Elevate" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <Button x:Name="SensorAccessSettings" DockPanel.Dock="Right" Content="Sensor access settings"
+                      Click="OpenSensorAccessSettings" VerticalAlignment="Center" Margin="12,0,0,0"/>
               <StackPanel>
                 <TextBlock Text="CPU temperature unavailable" FontWeight="SemiBold"/>
                 <TextBlock x:Name="CpuAccessHelp" Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
@@ -489,30 +489,19 @@
                   </Border>
                   <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                     <StackPanel>
-                      <TextBlock Text="Administrator access" Style="{StaticResource SectionTitle}"/>
-                      <TextBlock x:Name="AppPermissionStatus" Style="{StaticResource MutedText}"/>
-                      <CheckBox x:Name="AdministratorLaunch" Content="Request administrator access when I open the app"
-                                Click="SaveAdministratorLaunch" Margin="0,8,0,0"/>
-                      <TextBlock Text="Windows asks for approval when a new session starts. You can cancel and continue with standard access."
-                                 Style="{StaticResource MutedText}" Margin="0,4,0,0"/>
-                      <Button x:Name="ElevateButton" Content="Restart as administrator" Click="Elevate" HorizontalAlignment="Left" Margin="0,9,0,0"/>
-                      <TextBlock x:Name="AdministratorNotice" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
-                    </StackPanel>
-                  </Border>
-                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
-                    <StackPanel>
-                      <TextBlock Text="Telemetry helper" Style="{StaticResource SectionTitle}"/>
+                      <TextBlock Text="Sensor and FPS access" Style="{StaticResource SectionTitle}"/>
                       <TextBlock x:Name="TelemetryState" Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
-                      <Button x:Name="TelemetrySetup" Content="Set up telemetry helper" Click="ConfigureTelemetry"
+                      <Button x:Name="TelemetrySetup" Content="Enable sensor and FPS access" Click="ConfigureTelemetry"
                               HorizontalAlignment="Left" Margin="0,8,0,0"/>
-                      <TextBlock x:Name="TelemetryNotice" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                      <TextBlock x:Name="TelemetryNotice" Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                 AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                   </Border>
                   <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                     <StackPanel>
                       <TextBlock Text="Windows startup" Style="{StaticResource SectionTitle}"/>
                       <ComboBox x:Name="StartupMode" Width="328" HorizontalAlignment="Left" AutomationProperties.Name="Launch at sign-in">
-                        <ComboBoxItem Content="Off"/><ComboBoxItem Content="Start in tray at sign-in"/><ComboBoxItem Content="Start in tray with administrator access"/>
+                        <ComboBoxItem Content="Off"/><ComboBoxItem Content="Start in tray at sign-in"/>
                       </ComboBox>
                       <CheckBox x:Name="ResumeAtSignIn" Content="Resume cooling at sign-in"/>
                       <WrapPanel Margin="0,9,0,0">

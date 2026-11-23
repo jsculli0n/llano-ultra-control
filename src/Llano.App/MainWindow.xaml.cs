@@ -60,12 +60,6 @@ public partial class MainWindow : Window
         this.store = store;
         this.settings = settings;
         InitializeComponent();
-        SensorElevateButton.Visibility = VisibilityFor(!runningAsAdministrator);
-        CpuAccessHelp.Text = runningAsAdministrator
-            ? LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled
-                ? "Administrator access is active and a PawnIO installation was detected. HWiNFO with Shared Memory Support is another temperature source."
-                : "Administrator access is active. LibreHardwareMonitor did not detect a standalone PawnIO installation. Some CPUs need PawnIO or HWiNFO Shared Memory Support."
-            : "This app has standard permissions. Restart it with administrator access to try reading the CPU temperature.";
         AppPalette.Apply(settings.Theme);
 
         monitor = new(clock);
@@ -292,16 +286,14 @@ public partial class MainWindow : Window
     private void LoadStartupState()
     {
         bool installed = StartupRegistration.IsInstalled;
-        ElevateButton.IsEnabled = !runningAsAdministrator;
-        AppPermissionStatus.Text = runningAsAdministrator
-            ? "App permissions: Administrator"
-            : "App permissions: Standard";
         StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = StartupApply.IsEnabled = installed;
         ResumeAtSignIn.IsChecked = settings.ResumeAtSignIn;
         try
         {
-            StartupMode.SelectedIndex = installed ? (int)StartupRegistration.GetMode() : 0;
-            StartupStatus.Text = installed ? "" : "Sign-in options are available with the MSI installation.";
+            var startup = installed ? StartupRegistration.GetStartup() : default;
+            StartupMode.SelectedIndex = startup.Enabled ? 1 : 0;
+            StartupStatus.Text = !installed ? "Sign-in options are available with the MSI installation." :
+                startup.Elevated ? "Your previous sign-in task will switch to standard access at your next sign-in or when you enable sensor access." : "";
         }
         catch (Exception error)
         {
@@ -310,37 +302,19 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void SaveStartup(object sender, RoutedEventArgs e)
+    private void SaveStartup(object sender, RoutedEventArgs e)
     {
-        var button = (Button)sender;
-        var mode = (Llano.App.StartupMode)StartupMode.SelectedIndex;
-        bool resume = ResumeAtSignIn.IsChecked == true;
-        button.IsEnabled = false;
-        StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = false;
         try
         {
-            await StartupRegistration.SetAsync(mode);
+            StartupRegistration.SetAtSignIn(StartupMode.SelectedIndex == 1);
             Persist(settings with
             {
-                ResumeAtSignIn = resume,
+                ResumeAtSignIn = ResumeAtSignIn.IsChecked == true,
                 SelectedProfile = ProfilesList.SelectedItem as string ?? settings.SelectedProfile
             });
             StartupStatus.Text = "Startup settings saved.";
         }
         catch (Exception error) { StartupStatus.Text = error.Message; }
-        finally { button.IsEnabled = StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = true; }
-    }
-
-    private void Elevate(object sender, RoutedEventArgs e)
-    {
-        bool fromSensors = sender == SensorElevateButton;
-        try { App.RestartElevated(simulate, fromSensors); }
-        catch (Win32Exception error)
-        {
-            string notice = error.NativeErrorCode == 1223 ? "Administrator approval was cancelled." : error.Message;
-            if (fromSensors) ShowMessage(notice);
-            else AdministratorNotice.Text = notice;
-        }
     }
 
     private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)

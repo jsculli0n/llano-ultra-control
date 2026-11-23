@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Text.Json;
@@ -20,11 +19,6 @@ public partial class App : Application
         if (e.Args.Length == 1 && e.Args[0] == "--remove-startup-tasks")
         {
             Shutdown(StartupRegistration.RemoveInstalledTasks() ? 0 : 1);
-            return;
-        }
-        if (e.Args.Length == 2 && e.Args[0] == "--configure-startup")
-        {
-            Shutdown(StartupRegistration.ApplyElevatedCommand(e.Args[1]) ? 0 : 1);
             return;
         }
         if (e.Args.Length == 3 && e.Args[0] == "--configure-telemetry")
@@ -72,19 +66,8 @@ public partial class App : Application
             startupNotice = $"Unable to load saved profiles. {error.Message}";
         }
 
-        if (settings.RequestAdministratorOnLaunch && !trayLaunch && !demo && !restarting && !StartupRegistration.IsElevated)
-        {
-            try
-            {
-                RestartElevated(demo, showSensors);
-                return;
-            }
-            catch (Win32Exception error)
-            {
-                startupNotice = error.NativeErrorCode == 1223 ? "Opened with standard permissions because administrator approval was cancelled."
-                    : $"Opened with standard permissions. Administrator launch failed: {error.Message}";
-            }
-        }
+        if (trayLaunch && StartupRegistration.IsInstalled && StartupRegistration.IsElevated)
+            StartupRegistration.TryMigrateElevatedStartup();
 
         var window = new MainWindow(trayLaunch, demo, store, settings, startupNotice);
         MainWindow = window;
@@ -118,19 +101,4 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    public static void RestartElevated(bool demo, bool showSensors)
-    {
-        string path = Environment.ProcessPath!;
-        var start = new ProcessStartInfo(path)
-        {
-            UseShellExecute = true,
-            Verb = "runas",
-            WorkingDirectory = Path.GetDirectoryName(path)!
-        };
-        start.ArgumentList.Add("--restart");
-        if (demo) start.ArgumentList.Add("--demo");
-        if (showSensors) start.ArgumentList.Add("--sensors");
-        using var process = Process.Start(start) ?? throw new Win32Exception("Windows couldn't start an administrator session for the app.");
-        Current.Shutdown();
-    }
 }

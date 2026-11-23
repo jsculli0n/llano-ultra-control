@@ -19,6 +19,7 @@ public sealed record AppSettings
     public int ManualRpm { get; init; } = 1200;
     public Lighting? LastLighting { get; init; }
     public LightingPreset[] LightingPresets { get; init; } = [];
+    public StatsOverlaySettings StatsOverlay { get; init; } = new();
 }
 
 public sealed record LightingPreset(string Name, Lighting Lighting);
@@ -57,7 +58,7 @@ public sealed class SettingsStore(string path, SpeedLimits limits)
     private void Validate(AppSettings settings)
     {
         if (settings.Version != 1 || settings.Profiles is not { Length: > 0 } ||
-            !Enum.IsDefined(settings.Theme) ||
+            !Enum.IsDefined(settings.Theme) || settings.StatsOverlay?.IsValid() != true ||
             settings.Profiles.Any(p => p is null || p.Mode == FanMode.Automatic || p.Validate(limits, requireSensors: false) is not null) ||
             settings.Profiles.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != settings.Profiles.Length ||
             !settings.Profiles.Any(p => p.Name == settings.SelectedProfile) ||

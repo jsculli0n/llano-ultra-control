@@ -7,6 +7,7 @@ namespace Llano.Core;
 public static class AppDataFiles
 {
     private const string SettingsName = "settings.json";
+    public const string HistoryName = "cooling-history.bin";
 
     public static string DirectoryPath
     {
@@ -28,6 +29,7 @@ public static class AppDataFiles
             throw new IOException("The Llano Ultra Control data folder points to another location.");
 
         File.Delete(Path.Combine(directory.FullName, SettingsName));
+        File.Delete(Path.Combine(directory.FullName, HistoryName));
         foreach (var file in directory.EnumerateFiles("*.tmp"))
         {
             if (Guid.TryParseExact(Path.GetFileNameWithoutExtension(file.Name), "N", out _))

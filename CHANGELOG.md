@@ -1,5 +1,12 @@
 # Release notes
 
+## 1.0.6
+
+- Added an optional MSI-only telemetry helper. Approve it once to let the standard-permission app request supported CPU readings and FPS on demand.
+- Added 24-hour local cooling history with selectable time ranges and CPU/GPU temperatures alongside cooler RPM.
+- Added a configurable, click-through overlay with grouped CPU, GPU and memory readings, cooler RPM, and optional foreground-app FPS via PresentMon.
+- Added background opacity, outline, and app-theme colours for the overlay. CPU clock uses Windows frequency when a hardware clock reading is unavailable.
+
 ## 1.0.5
 
 - The shutdown power option now turns the cooler back on when the app starts at Windows sign-in. It waits for USB to respond and leaves the cooler alone after the sign-in attempt finishes.

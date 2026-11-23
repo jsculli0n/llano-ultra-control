@@ -18,6 +18,7 @@ public partial class MainWindow
         ThemePicker.SelectedIndex = (int)settings.Theme;
         CloseToTray.IsChecked = settings.CloseToTray;
         AdministratorLaunch.IsChecked = settings.RequestAdministratorOnLaunch;
+        InitializeOverlayPreferences();
         AboutVersion.Text = $"Version {ReleaseVersion}  ·  {(StartupRegistration.IsInstalled ? "Installed" : "Portable")}";
         foreach (var button in new[] { OpenGuide, OpenLicence, OpenNotices })
             button.IsEnabled = File.Exists(Path.Combine(AppContext.BaseDirectory, (string)button.Tag));
@@ -54,7 +55,8 @@ public partial class MainWindow
         GeneralSettings.Visibility = VisibilityFor(section == 0);
         UsbSettings.Visibility = VisibilityFor(section == 1);
         DiagnosticSettings.Visibility = VisibilityFor(section == 2);
-        AboutSettings.Visibility = VisibilityFor(section == 3);
+        OverlaySettings.Visibility = VisibilityFor(section == 3);
+        AboutSettings.Visibility = VisibilityFor(section == 4);
         SettingsScroll.ScrollToTop();
     }
 

@@ -121,7 +121,7 @@ public partial class MainWindow
         return inputs;
     }
 
-    private void UpdateCoolingDashboard(TimeSpan now, FanDecision decision)
+    private void UpdateCoolingDashboard(FanDecision decision, SensorReading? cpu, SensorReading? gpu)
     {
         int? actual = simulate ? decision.TargetRpm : coolerStatus is { Powered: true } status ? status.SettingRpm : null;
         SpeedLabel.Text = simulate ? "Simulated speed" : "Cooler speed setting";
@@ -149,6 +149,8 @@ public partial class MainWindow
         CoolingMotionLabel.Foreground = (System.Windows.Media.Brush)FindResource(
             decision.State == FanState.SensorFallback || decision.Motion == FanMotion.HighTemperature ? "Warning" : "Accent");
         SpeedGauge.ShowSpeed(actual);
-        SpeedHistory.Record(now, actual);
+        int? observedRpm = !simulate && coolerStatus is { Powered: false } ? 0 : actual;
+        RecordHistory(observedRpm, cpu, gpu);
+        UpdateStatsOverlay(observedRpm, cpu, gpu);
     }
 }

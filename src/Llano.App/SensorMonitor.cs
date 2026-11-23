@@ -32,15 +32,15 @@ internal sealed class SensorMonitor
 
     public SensorMonitor(Stopwatch clock) => this.clock = clock;
 
-    public async Task RunAsync(CancellationToken stop)
+    public async Task RunAsync(CancellationToken stop, bool cpuOnly = false)
     {
         var computer = new Computer
         {
             IsCpuEnabled = true,
-            IsGpuEnabled = true,
-            IsMemoryEnabled = true,
-            IsMotherboardEnabled = true,
-            IsStorageEnabled = true
+            IsGpuEnabled = !cpuOnly,
+            IsMemoryEnabled = !cpuOnly,
+            IsMotherboardEnabled = !cpuOnly,
+            IsStorageEnabled = !cpuOnly
         };
         string? error = null;
         try { computer.Open(); }
@@ -76,7 +76,7 @@ internal sealed class SensorMonitor
                         Debug.WriteLine(e);
                     }
                 }
-                bool shared = HwinfoTemperatures.TryRead(readings, clock.Elapsed);
+                bool shared = !cpuOnly && HwinfoTemperatures.TryRead(readings, clock.Elapsed);
                 var unique = readings.DistinctBy(reading => reading.Id)
                     .OrderBy(reading => reading.Component).ThenBy(reading => reading.Hardware)
                     .ThenBy(reading => reading.Name).ToArray();

@@ -109,8 +109,21 @@
             </Border>
             <Border Style="{StaticResource Card}" Padding="17,11" Margin="0,0,0,10">
               <StackPanel>
-                <TextBlock Text="Fan speed history" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                <local:FanSpeedHistory x:Name="SpeedHistory" Height="88" AutomationProperties.Name="Cooler speed setting over the last 60 seconds"/>
+                <DockPanel Margin="0,0,0,5">
+                  <ComboBox x:Name="HistoryRange" Width="127" SelectedIndex="1" DockPanel.Dock="Right"
+                            AutomationProperties.Name="Cooling history time range" SelectionChanged="ChangeHistoryRange">
+                    <ComboBoxItem Tag="1" Content="60 seconds"/><ComboBoxItem Tag="5" Content="5 minutes"/>
+                    <ComboBoxItem Tag="30" Content="30 minutes"/><ComboBoxItem Tag="120" Content="2 hours"/>
+                    <ComboBoxItem Tag="360" Content="6 hours"/><ComboBoxItem Tag="1440" Content="24 hours"/>
+                  </ComboBox>
+                  <TextBlock Text="Cooling history" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0"/>
+                </DockPanel>
+                <WrapPanel Margin="2,2,0,4">
+                  <TextBlock Text="●  Cooler RPM" Foreground="#5BDEBD" Margin="0,0,18,0"/>
+                  <TextBlock Text="●  CPU temperature" Foreground="#FFB06A" Margin="0,0,18,0"/>
+                  <TextBlock Text="●  GPU temperature" Foreground="#84A9FF"/>
+                </WrapPanel>
+                <local:CoolingHistoryChart x:Name="SpeedHistory" Height="174" AutomationProperties.Name="Cooling history for RPM and temperatures"/>
               </StackPanel>
             </Border>
             <Expander x:Name="SimulationInputs" Header="Simulation inputs" Visibility="Collapsed" Padding="10,0">
@@ -457,6 +470,7 @@
                 <ListBoxItem Content="General"/>
                 <ListBoxItem Content="Cooler &amp; USB"/>
                 <ListBoxItem Content="Diagnostics"/>
+                <ListBoxItem Content="Stats overlay"/>
                 <ListBoxItem Content="About"/>
               </ListBox>
             </Border>
@@ -483,6 +497,15 @@
                                  Style="{StaticResource MutedText}" Margin="0,4,0,0"/>
                       <Button x:Name="ElevateButton" Content="Restart as administrator" Click="Elevate" HorizontalAlignment="Left" Margin="0,9,0,0"/>
                       <TextBlock x:Name="AdministratorNotice" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                      <TextBlock Text="Telemetry helper" Style="{StaticResource SectionTitle}"/>
+                      <TextBlock x:Name="TelemetryState" Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                      <Button x:Name="TelemetrySetup" Content="Set up telemetry helper" Click="ConfigureTelemetry"
+                              HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                      <TextBlock x:Name="TelemetryNotice" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                   </Border>
                   <Border Style="{StaticResource Card}" Margin="0,0,0,12">
@@ -538,6 +561,50 @@
                       <TextBlock Text="Diagnostics are copied to your clipboard for you to review and share." Style="{StaticResource MutedText}"/>
                       <TextBox x:Name="CaptureLog" IsReadOnly="True" TextWrapping="Wrap" Height="88" VerticalScrollBarVisibility="Auto"
                                AutomationProperties.Name="HID diagnostics" FontFamily="Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="OverlaySettings" Visibility="Collapsed">
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="Stats overlay" Style="{StaticResource SectionTitle}"/>
+                      <CheckBox x:Name="OverlayEnabled" Content="Show desktop stats overlay" Click="SaveOverlay"/>
+                      <TextBlock Text="A click-through display on your primary screen. It stays visible when the app is in the tray."
+                                 Style="{StaticResource MutedText}" Margin="0,5,0,11" TextWrapping="Wrap"/>
+                      <TextBlock Text="Readings" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                      <UniformGrid x:Name="OverlayFields" Columns="2"/>
+                      <UniformGrid Columns="3" Margin="0,8,0,0">
+                        <StackPanel Margin="0,0,8,0">
+                          <TextBlock Text="Position" Style="{StaticResource FieldLabel}"/>
+                          <ComboBox x:Name="OverlayPosition" SelectionChanged="SaveOverlay" AutomationProperties.Name="Overlay position">
+                            <ComboBoxItem Content="Top left"/><ComboBoxItem Content="Top centre"/><ComboBoxItem Content="Top right"/>
+                            <ComboBoxItem Content="Bottom left"/><ComboBoxItem Content="Bottom centre"/><ComboBoxItem Content="Bottom right"/>
+                          </ComboBox>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,8,0">
+                          <TextBlock Text="Layout" Style="{StaticResource FieldLabel}"/>
+                          <ComboBox x:Name="OverlayLayout" SelectionChanged="SaveOverlay" AutomationProperties.Name="Overlay layout">
+                            <ComboBoxItem Content="Horizontal"/><ComboBoxItem Content="Vertical"/>
+                          </ComboBox>
+                        </StackPanel>
+                        <StackPanel>
+                          <TextBlock Text="Text size" Style="{StaticResource FieldLabel}"/>
+                          <ComboBox x:Name="OverlaySize" SelectionChanged="SaveOverlay" AutomationProperties.Name="Overlay text size">
+                            <ComboBoxItem Content="Compact"/><ComboBoxItem Content="Standard"/><ComboBoxItem Content="Large"/>
+                          </ComboBox>
+                        </StackPanel>
+                      </UniformGrid>
+                      <WrapPanel Margin="0,11,0,0">
+                        <CheckBox x:Name="OverlayFollowTheme" Content="Follow app theme" Click="SaveOverlay" Margin="0,0,16,0"/>
+                        <CheckBox x:Name="OverlayBorder" Content="Show outline" Click="SaveOverlay"/>
+                      </WrapPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="Background opacity" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="OverlayOpacity" Width="105" SelectionChanged="SaveOverlay" ItemStringFormat="{}{0}%"
+                                  AutomationProperties.Name="Overlay background opacity"/>
+                      </StackPanel>
+                      <TextBlock x:Name="FpsStatus" Style="{StaticResource MutedText}" Margin="0,8,0,0"/>
+                      <TextBlock x:Name="OverlayStatus" Style="{StaticResource MutedText}" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                   </Border>
                 </StackPanel>

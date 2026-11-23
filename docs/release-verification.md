@@ -9,6 +9,7 @@ Use a clean Windows 11 x64 test machine or disposable VM. Keep a test copy of th
 - Install the MSI. Check the Start menu shortcut, version in About, and standard startup at sign-in. Verify that granting administrator startup is optional and can be undone.
 - Install 0.7.0, create a named profile, choose a startup preference, and upgrade. Verify that the newer version preserves the profile and startup preference. The theme should default to Ember Red.
 - Uninstall and confirm the shortcuts, installed app, scheduled startup tasks, and the uninstalling account’s saved profiles and preferences are removed. Reinstall and check that it starts with the default settings.
+- In the MSI-installed app, set up the telemetry helper and approve the Windows prompt. Exit, reopen with standard permissions, and verify the helper connects without another prompt. Verify FPS where Windows permits capture and CPU readings on a system with a supported sensor driver. Disable the helper and verify the task is removed.
 
 ## Hardware and shutdown
 

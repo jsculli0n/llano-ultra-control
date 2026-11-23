@@ -27,6 +27,16 @@ public partial class App : Application
             Shutdown(StartupRegistration.ApplyElevatedCommand(e.Args[1]) ? 0 : 1);
             return;
         }
+        if (e.Args.Length == 3 && e.Args[0] == "--configure-telemetry")
+        {
+            Shutdown(StartupRegistration.ApplyTelemetryCommand(e.Args[1], e.Args[2]) ? 0 : 1);
+            return;
+        }
+        if (e.Args.Length == 1 && e.Args[0] == StartupRegistration.TelemetryArgument)
+        {
+            RunTelemetryHelper();
+            return;
+        }
 
         using var identity = WindowsIdentity.GetCurrent();
         string userSid = identity.User!.Value;
@@ -82,6 +92,21 @@ public partial class App : Application
             (_, _) => Dispatcher.InvokeAsync(window.ShowDashboard), null, Timeout.Infinite, executeOnlyOnce: false);
         if (showSensors) window.ShowSensors();
         if (!trayLaunch) window.Show();
+    }
+
+    private async void RunTelemetryHelper()
+    {
+        int result = 1;
+        try
+        {
+            if (StartupRegistration.IsInstalled && StartupRegistration.IsElevated)
+            {
+                await TelemetryHelper.RunAsync();
+                result = 0;
+            }
+        }
+        catch (Exception error) { Debug.WriteLine(error); }
+        Shutdown(result);
     }
 
     protected override void OnExit(ExitEventArgs e)

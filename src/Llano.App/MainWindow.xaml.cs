@@ -101,6 +101,8 @@ public partial class MainWindow : Window
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
         initialized = true;
+        LoadHistory();
+        InitializeTelemetryHelper();
         InitializePreferences();
         ComponentFilter.SelectedIndex = 0;
         ReloadProfiles();
@@ -154,6 +156,7 @@ public partial class MainWindow : Window
             readings = live.Readings;
             temperatureSensors = live.TemperatureSensors;
         }
+        UpdateTelemetry(live, now);
         var cpu = PreferredTemperature(Component.Cpu);
         var gpu = PreferredTemperature(Component.Gpu);
         hasUsableCpuTemperature = cpu is { Value: double cpuTemperature } &&
@@ -165,7 +168,8 @@ public partial class MainWindow : Window
         CpuTile.ToolTip = cpu?.Caption;
         GpuTile.ToolTip = gpu?.Caption;
         UpdateSensorSummaries(cpu, gpu, live != SensorSnapshot.Empty);
-        SensorSource.Text = simulate ? "Simulated CPU and GPU inputs" : live.Status;
+        SensorSource.Text = simulate ? "Simulated CPU and GPU inputs" :
+            telemetry.Snapshot is { Reply.Cpu.Length: > 0 } && cpu is not null ? "CPU readings available through the telemetry helper." : live.Status;
         UpdateSensorSelectors();
         if (IsVisible && Navigation.SelectedItem == SensorsPage) UpdateReadingsGrid();
 
@@ -174,7 +178,7 @@ public partial class MainWindow : Window
             currentRpm: simulate ? lastDecision.TargetRpm :
                 driveHardware && coolerStatus is { Powered: true } status ? status.SettingRpm : null);
         lastDecision = decision;
-        UpdateCoolingDashboard(now, decision);
+        UpdateCoolingDashboard(decision, cpu, gpu);
         bool automatic = runningProfile?.Mode == FanMode.Automatic;
         string rpm = decision.TargetRpm is { } target ? $"{target:N0} RPM" : "—";
         string action = driveHardware ? "" : " preview";
@@ -252,6 +256,7 @@ public partial class MainWindow : Window
     {
         if (!initialized) return;
         if (IsVisible && Navigation.SelectedItem == SensorsPage) UpdateReadingsGrid();
+        if (IsVisible && Navigation.SelectedItem == OverviewPage) ShowHistory(DateTimeOffset.UtcNow);
         UpdateControlAvailability();
         UpdateLighting();
     }
@@ -264,7 +269,11 @@ public partial class MainWindow : Window
         if (simulate) signInPower = null;
         runningProfile = null;
         activeCoolingMode = null;
-        if (wasSimulating != simulate) SpeedHistory.Clear();
+        if (wasSimulating != simulate)
+        {
+            demoHistory = new();
+            ShowHistory(DateTimeOffset.UtcNow);
+        }
         driveHardware = false;
         PauseControl(refresh: false);
         message = null;
@@ -382,5 +391,8 @@ public partial class MainWindow : Window
         tray.ContextMenuStrip?.Dispose();
         tray.Icon?.Dispose();
         tray.Dispose();
+        telemetry.Request(TelemetryRequest.None);
+        fpsCapture.StopForExit();
+        SaveHistoryOnExit();
     }
 }

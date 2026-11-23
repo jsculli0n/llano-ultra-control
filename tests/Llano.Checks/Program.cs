@@ -185,6 +185,19 @@ Equal(false, startupPower.TryAttempt(At(9), false), "sign-in limits USB power re
 startupPower = new(At(0));
 Equal(false, startupPower.TryAttempt(At(45), false), "late connection after sign-in does not turn on the cooler unexpectedly");
 
+var history = new CoolingHistory();
+var historyStart = DateTimeOffset.UnixEpoch;
+for (int second = 0; second <= 600; second++)
+    history.Record(new(historyStart.AddSeconds(second), 800, 51, 42), out _);
+Equal(61, history.View(historyStart.AddMinutes(10), TimeSpan.FromMinutes(1)).Length, "short history keeps per-second readings");
+Equal(61, history.Archive().Length, "history archives one sample every ten seconds");
+var restoredHistory = new CoolingHistory();
+restoredHistory.Load(history.Archive(), historyStart.AddMinutes(10));
+Equal(61, restoredHistory.Archive().Length, "history survives restart");
+restoredHistory.Record(new(historyStart.AddDays(2), null, null, null), out _);
+Equal(1, restoredHistory.Archive().Length, "history discards samples older than a day");
+Equal(false, new StatsOverlaySettings().Enabled, "stats overlay is opt-in");
+
 string testSettings = Path.Combine(Path.GetTempPath(), $"Llano-check-{Guid.NewGuid():N}.json");
 try
 {
@@ -230,15 +243,18 @@ finally { File.Delete(testSettings); }
 string settingsDirectory = Path.Combine(Path.GetTempPath(), $"Llano-uninstall-check-{Guid.NewGuid():N}");
 Directory.CreateDirectory(settingsDirectory);
 string config = Path.Combine(settingsDirectory, "settings.json");
+string savedHistory = Path.Combine(settingsDirectory, AppDataFiles.HistoryName);
 string temporaryConfig = Path.Combine(settingsDirectory, $"{Guid.NewGuid():N}.tmp");
 string retainedFile = Path.Combine(settingsDirectory, "notes.tmp");
 try
 {
     File.WriteAllText(config, "{}");
+    File.WriteAllText(savedHistory, "saved readings");
     File.WriteAllText(temporaryConfig, "{}");
     File.WriteAllText(retainedFile, "keep this");
     AppDataFiles.RemoveSettings(settingsDirectory);
     Equal(false, File.Exists(config), "uninstall removes the saved settings");
+    Equal(false, File.Exists(savedHistory), "uninstall removes the saved cooling history");
     Equal(false, File.Exists(temporaryConfig), "uninstall removes interrupted settings writes");
     Equal(true, File.Exists(retainedFile), "uninstall preserves files it did not create");
     File.Delete(retainedFile);
@@ -251,6 +267,7 @@ finally
     if (Directory.Exists(settingsDirectory))
     {
         File.Delete(config);
+        File.Delete(savedHistory);
         File.Delete(temporaryConfig);
         File.Delete(retainedFile);
         Directory.Delete(settingsDirectory);

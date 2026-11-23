@@ -47,6 +47,7 @@ exit /b 0
 
 :publish
 "%DOTNET_EXE%" publish "%APP_PROJECT%" -c Release -r win-x64 --self-contained --no-restore -o "%LLANO_PUBLISH_DIR%" || goto failure
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "%CD%\package-presentmon.ps1" "%LLANO_PUBLISH_DIR%" || goto failure
 copy /y LICENSE "%LLANO_PUBLISH_DIR%\LICENSE" >nul || goto failure
 copy /y THIRD-PARTY-NOTICES.md "%LLANO_PUBLISH_DIR%\THIRD-PARTY-NOTICES.md" >nul || goto failure
 copy /y README.md "%LLANO_PUBLISH_DIR%\README.md" >nul || goto failure

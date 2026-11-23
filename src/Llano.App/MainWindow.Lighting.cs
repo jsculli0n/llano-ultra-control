@@ -169,36 +169,32 @@ public partial class MainWindow
         UpdateLightingActions();
         var effect = (LightingEffect)LightEffect.SelectedIndex;
         LightingLookTitle.Text = (LightingLooks.SelectedItem as LightingOption)?.Name ?? "Lighting preview";
-        LightingLookDetail.Text = LightingEnabled.IsChecked == true ? EffectName(effect) : "Lights off";
+        bool lit = LightingEnabled.IsChecked == true && Brightness.Value > 0;
+        LightingLookDetail.Text = !lit ? "Lights off in preview" : LightColor.SelectedItem is SwatchOption colour &&
+            effect is LightingEffect.SolidColor or LightingEffect.Breathing ? $"{colour.Name} · {EffectName(effect)}" : EffectName(effect);
         bool gradient = effect is LightingEffect.ColorGradient or LightingEffect.ColorChase;
         ColorControls.Visibility = VisibilityFor(!gradient);
         LightSpeed.IsEnabled = effect != LightingEffect.SolidColor;
-        LightingPreview.BeginAnimation(OpacityProperty, null);
-        if (!IsVisible || Navigation.SelectedItem != LightingPage || LightingEnabled.IsChecked != true || Brightness.Value == 0)
+        LightingPreviewEffects.BeginAnimation(OpacityProperty, null);
+        LightingPreview.BorderBrush = LightingHalo.BorderBrush = null;
+        if (!IsVisible || WindowState == WindowState.Minimized || Navigation.SelectedItem != LightingPage || !lit)
         {
-            LightingPreview.Background = (Brush)FindResource("Input");
             return;
         }
-        double fraction = Brightness.Value / 100;
+        double fraction = Math.Pow(Brightness.Value / 100, 0.8);
         TimeSpan duration = TimeSpan.FromSeconds(LightSpeed.SelectedIndex switch { 1 => 3.2, 2 => 2.4, 4 => 0.9, _ => 1.5 });
-        if (gradient)
+        bool animate = SystemParameters.ClientAreaAnimation;
+        Brush strip = effect switch
         {
-            var brush = Spectrum(fraction);
-            if (effect == LightingEffect.ColorChase && SystemParameters.ClientAreaAnimation)
-            {
-                var offset = new TranslateTransform();
-                brush.RelativeTransform = offset;
-                offset.BeginAnimation(TranslateTransform.XProperty,
-                    new DoubleAnimation(0, 1, duration) { RepeatBehavior = RepeatBehavior.Forever });
-            }
-            else if (SystemParameters.ClientAreaAnimation) Pulse(duration);
-            LightingPreview.Background = brush;
-        }
-        else if (LightColor.SelectedIndex >= 0)
-        {
-            LightingPreview.Background = SolidBrush(V12UltraStatus.Palette[LightColor.SelectedIndex], fraction);
-            if (effect == LightingEffect.Breathing && SystemParameters.ClientAreaAnimation) Pulse(duration);
-        }
+            LightingEffect.ColorGradient when animate => FadeSpectrum(fraction, duration * 3),
+            LightingEffect.ColorChase when animate => ChaseSpectrum(fraction, duration),
+            LightingEffect.ColorGradient or LightingEffect.ColorChase => Spectrum(fraction),
+            _ when LightColor.SelectedItem is SwatchOption =>
+                SolidBrush(V12UltraStatus.Palette[LightColor.SelectedIndex], fraction),
+            _ => Brushes.Transparent
+        };
+        LightingPreview.BorderBrush = LightingHalo.BorderBrush = strip;
+        if (effect == LightingEffect.Breathing && animate) Pulse(duration / 2);
     }
 
     private static string EffectName(LightingEffect effect) => effect switch
@@ -210,11 +206,42 @@ public partial class MainWindow
     };
 
     private void Pulse(TimeSpan duration) =>
-        LightingPreview.BeginAnimation(OpacityProperty, new DoubleAnimation(0.28, 1, duration)
+        LightingPreviewEffects.BeginAnimation(OpacityProperty, new DoubleAnimation(0.16, 1, duration)
         {
             AutoReverse = true,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
             RepeatBehavior = RepeatBehavior.Forever
         });
+
+    private static LinearGradientBrush ChaseSpectrum(double brightness, TimeSpan duration)
+    {
+        var brush = Spectrum(brightness);
+        var offset = new TranslateTransform();
+        brush.RelativeTransform = offset;
+        offset.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(0, 1, duration) { RepeatBehavior = RepeatBehavior.Forever });
+        return brush;
+    }
+
+    private static LinearGradientBrush FadeSpectrum(double brightness, TimeSpan duration)
+    {
+        var brush = new LinearGradientBrush { EndPoint = new Point(1, 0.35) };
+        var palette = V12UltraStatus.Palette;
+        for (int stop = 0; stop < 3; stop++)
+        {
+            int start = stop * 2;
+            var colour = new GradientStop(PreviewColor(palette[start], brightness), stop / 2.0);
+            var animation = new ColorAnimationUsingKeyFrames { Duration = duration, RepeatBehavior = RepeatBehavior.Forever };
+            for (int frame = 0; frame <= palette.Count; frame++)
+            {
+                Color next = PreviewColor(palette[(start + frame) % palette.Count], brightness);
+                animation.KeyFrames.Add(new LinearColorKeyFrame(next, KeyTime.FromPercent((double)frame / palette.Count)));
+            }
+            colour.BeginAnimation(GradientStop.ColorProperty, animation);
+            brush.GradientStops.Add(colour);
+        }
+        return brush;
+    }
 
     private static LinearGradientBrush Spectrum(double brightness)
     {

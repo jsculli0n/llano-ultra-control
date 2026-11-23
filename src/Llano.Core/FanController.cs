@@ -69,14 +69,13 @@ public sealed class FanController(SpeedLimits limits)
         if (current.Mode == FanMode.Automatic)
         {
             var cpu = FreshReading(CoolingPresets.CpuInput);
-            var gpu = FreshReading(CoolingPresets.GpuInput);
-            if (cpu is null && gpu is null)
+            if (cpu is null)
             {
                 automatic.ResetReadings();
                 return Missing(current);
             }
             armed = true;
-            var (rpm, motion) = automatic.Update(current, now, cpu, gpu, target, currentRpm);
+            var (rpm, motion) = automatic.Update(current, now, cpu, FreshReading(CoolingPresets.GpuInput), target, currentRpm);
             return Apply(FanState.Smart, rpm) with { Motion = motion };
         }
         if (current.ActiveSensors.Any(id => FreshReading(id) is null)) return Missing(current);

@@ -30,6 +30,7 @@ public partial class MainWindow
     }
 
     internal void ShowSensors() => Navigation.SelectedItem = SensorsPage;
+    private void OpenSensors(object sender, System.Windows.RoutedEventArgs e) => ShowSensors();
 
     private void UpdateSensorSummaries(SensorReading? cpu, SensorReading? gpu, bool scanCompleted)
     {
@@ -39,7 +40,7 @@ public partial class MainWindow
         SensorGpuCaption.Text = gpu?.Caption ?? "Temperature unavailable";
         SensorCpuCaption.ToolTip = cpu?.Caption;
         SensorGpuCaption.ToolTip = gpu?.Caption;
-        CpuAccessNotice.Visibility = VisibilityFor(!simulate && scanCompleted && cpu is null);
+        CpuAccessNotice.Visibility = VisibilityFor(!simulate && scanCompleted && !hasUsableCpuTemperature);
     }
 
     private void UpdateReadingsGrid()

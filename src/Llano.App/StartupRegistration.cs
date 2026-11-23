@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Security.Principal;
 
 namespace Llano.App;
@@ -27,13 +26,14 @@ internal static class StartupRegistration
 
     public static StartupMode GetMode()
     {
+        dynamic root = Root();
         try
         {
-            dynamic task = Root().GetTask(TaskPrefix + Sid);
+            dynamic task = root.GetTask(TaskPrefix + Sid);
             return (bool)task.Enabled ? ((int)task.Definition.Principal.RunLevel == 1 ? StartupMode.Elevated : StartupMode.Standard)
                 : StartupMode.Off;
         }
-        catch (COMException error) when (error.HResult == TaskNotFound) { return StartupMode.Off; }
+        catch (Exception error) when (error.HResult == TaskNotFound) { return StartupMode.Off; }
     }
 
     public static async Task SetAsync(StartupMode mode)
@@ -71,18 +71,27 @@ internal static class StartupRegistration
         try
         {
             dynamic root = Root();
-            var names = new List<string>();
-            foreach (dynamic task in root.GetTasks(0))
+            bool removedAll = true;
+            foreach (dynamic task in root.GetTasks(1))
             {
                 string name = task.Name;
                 if (!name.StartsWith(TaskPrefix + "S-1-", StringComparison.OrdinalIgnoreCase)) continue;
-                dynamic actions = task.Definition.Actions;
-                if (actions.Count == 1 && actions[1].Type == 0 &&
-                    string.Equals((string)actions[1].Path, InstalledPath, StringComparison.OrdinalIgnoreCase))
-                    names.Add(name);
+                try
+                {
+                    dynamic actions = task.Definition.Actions;
+                    if (actions.Count == 1 && actions[1].Type == 0 &&
+                        string.Equals((string)actions[1].Path, InstalledPath, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals((string)actions[1].Arguments, "--tray", StringComparison.Ordinal))
+                        root.DeleteTask(name, 0);
+                }
+                catch (Exception error) when (error.HResult == TaskNotFound) { }
+                catch (Exception error)
+                {
+                    Debug.WriteLine(error);
+                    removedAll = false;
+                }
             }
-            foreach (string name in names) root.DeleteTask(name, 0);
-            return true;
+            return removedAll;
         }
         catch (Exception error) { Debug.WriteLine(error); return false; }
     }
@@ -94,7 +103,7 @@ internal static class StartupRegistration
         if (mode == StartupMode.Off)
         {
             try { root.DeleteTask(name, 0); }
-            catch (COMException error) when (error.HResult == TaskNotFound) { }
+            catch (Exception error) when (error.HResult == TaskNotFound) { }
             return;
         }
 

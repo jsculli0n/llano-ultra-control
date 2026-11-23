@@ -9,10 +9,8 @@
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal">
-          <Border Width="35" Height="35" CornerRadius="8" Background="{DynamicResource Selected}" Margin="0,0,11,0">
-            <TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"
-                       HorizontalAlignment="Center" Foreground="{DynamicResource Accent}"/>
-          </Border>
+          <Image Width="35" Height="35" Margin="0,0,11,0" VerticalAlignment="Center" Stretch="Uniform"
+                 Source="{Binding Icon, RelativeSource={RelativeSource AncestorType=Window}}"/>
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="Llano Ultra Control" FontSize="18" FontWeight="SemiBold"/>
             <TextBlock x:Name="DeviceState" Text="Checking for V12 Ultra…" Style="{StaticResource MutedText}"/>
@@ -100,6 +98,12 @@
                   <Button x:Name="StartControl" DockPanel.Dock="Right" Content="_Apply Balanced" Style="{StaticResource Primary}"
                           Click="StartFan" Margin="12,0,0,0"/>
                   <TextBlock x:Name="CoolingModeHint" Style="{StaticResource MutedText}" VerticalAlignment="Center"/>
+                </DockPanel>
+                <DockPanel x:Name="CoolingCpuRequired" Visibility="Collapsed" Margin="0,8,0,0">
+                  <Button x:Name="CoolingSensorHelp" DockPanel.Dock="Right" Content="Check _Sensors" Click="OpenSensors"
+                          Margin="10,0,0,0"/>
+                  <TextBlock Text="Automatic presets need a CPU temperature. You can still set the speed with Manual."
+                             Style="{StaticResource MutedText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
               </StackPanel>
             </Border>
@@ -197,16 +201,74 @@
               <StackPanel>
                 <TextBlock x:Name="LightingLookTitle" Text="Lighting preview" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
                 <TextBlock x:Name="LightingLookDetail" Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
-                <Border CornerRadius="12" Padding="24,23" Background="{DynamicResource LightStage}">
-                  <Grid MinHeight="112">
-                    <Border x:Name="LightingPreview" CornerRadius="20" Background="{DynamicResource Input}"/>
-                    <Border Background="{DynamicResource Sidebar}" CornerRadius="13" Margin="6" BorderThickness="1" BorderBrush="{DynamicResource Line}"/>
-                    <Border Width="65" Height="65" CornerRadius="33" BorderThickness="1" BorderBrush="{DynamicResource AccentBorder}" Background="{DynamicResource Panel}">
-                      <TextBlock Text="&#xE8EC;" FontFamily="Segoe MDL2 Assets" FontSize="25" Foreground="{DynamicResource Muted}"
-                                 VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    </Border>
-                  </Grid>
+                <Border CornerRadius="12" Padding="5" Background="{DynamicResource LightStage}">
+                  <Viewbox MaxWidth="410" StretchDirection="Both">
+                    <Grid Width="330" Height="196">
+                      <Border Margin="26,30,26,18" CornerRadius="28" Background="#090A0E"/>
+                      <Border Margin="25,23,25,25" CornerRadius="27" BorderBrush="#48505D" BorderThickness="1">
+                        <Border.Background>
+                          <LinearGradientBrush StartPoint="0,0" EndPoint="0.85,1">
+                            <GradientStop Color="#353B47" Offset="0"/>
+                            <GradientStop Color="#1C202A" Offset="0.48"/>
+                            <GradientStop Color="#101218" Offset="1"/>
+                          </LinearGradientBrush>
+                        </Border.Background>
+                      </Border>
+                      <Border Margin="38,36,38,38" CornerRadius="18" BorderBrush="#4A505D" BorderThickness="1" Background="#141720"/>
+                      <Canvas Width="112" Height="112" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Canvas.Resources>
+                          <PathGeometry x:Key="LightingFanBlade" Figures="M 56,44 C 49,32 49,19 60,13 C 70,13 79,22 78,32 C 68,31 63,37 61,47 Z"/>
+                        </Canvas.Resources>
+                        <Ellipse Width="112" Height="112" Fill="#12151D" Stroke="#565E6D" StrokeThickness="1"/>
+                        <Ellipse Width="96" Height="96" Canvas.Left="8" Canvas.Top="8" Fill="#090B11" Stroke="#343C4A"/>
+                        <Image Width="112" Height="112">
+                          <Image.Source>
+                            <DrawingImage>
+                              <DrawingImage.Drawing><DrawingGroup>
+                                <GeometryDrawing Brush="Transparent" Geometry="M 0,0 H 112 V 112 H 0 Z"/>
+                                <GeometryDrawing Brush="#414A59" Geometry="{StaticResource LightingFanBlade}"/>
+                                <DrawingGroup>
+                                  <DrawingGroup.Transform><RotateTransform Angle="60" CenterX="56" CenterY="56"/></DrawingGroup.Transform>
+                                  <GeometryDrawing Brush="#394250" Geometry="{StaticResource LightingFanBlade}"/>
+                                </DrawingGroup>
+                                <DrawingGroup>
+                                  <DrawingGroup.Transform><RotateTransform Angle="120" CenterX="56" CenterY="56"/></DrawingGroup.Transform>
+                                  <GeometryDrawing Brush="#333C4A" Geometry="{StaticResource LightingFanBlade}"/>
+                                </DrawingGroup>
+                                <DrawingGroup>
+                                  <DrawingGroup.Transform><RotateTransform Angle="180" CenterX="56" CenterY="56"/></DrawingGroup.Transform>
+                                  <GeometryDrawing Brush="#333C4A" Geometry="{StaticResource LightingFanBlade}"/>
+                                </DrawingGroup>
+                                <DrawingGroup>
+                                  <DrawingGroup.Transform><RotateTransform Angle="240" CenterX="56" CenterY="56"/></DrawingGroup.Transform>
+                                  <GeometryDrawing Brush="#394250" Geometry="{StaticResource LightingFanBlade}"/>
+                                </DrawingGroup>
+                                <DrawingGroup>
+                                  <DrawingGroup.Transform><RotateTransform Angle="300" CenterX="56" CenterY="56"/></DrawingGroup.Transform>
+                                  <GeometryDrawing Brush="#414A59" Geometry="{StaticResource LightingFanBlade}"/>
+                                </DrawingGroup>
+                                <GeometryDrawing Brush="#596474">
+                                  <GeometryDrawing.Geometry><EllipseGeometry Center="56,56" RadiusX="14" RadiusY="14"/></GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+                                <GeometryDrawing Brush="#292F39">
+                                  <GeometryDrawing.Geometry><EllipseGeometry Center="56,56" RadiusX="9" RadiusY="9"/></GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+                              </DrawingGroup></DrawingImage.Drawing>
+                            </DrawingImage>
+                          </Image.Source>
+                        </Image>
+                      </Canvas>
+                      <Border Margin="29,27,29,29" CornerRadius="23" BorderBrush="#11131A" BorderThickness="4"/>
+                      <Grid x:Name="LightingPreviewEffects">
+                        <Border x:Name="LightingHalo" Margin="26,24,26,26" CornerRadius="26" BorderThickness="10" Opacity="0.52">
+                          <Border.Effect><BlurEffect Radius="12" RenderingBias="Performance"/></Border.Effect>
+                        </Border>
+                        <Border x:Name="LightingPreview" Margin="30,28,30,30" CornerRadius="23" BorderThickness="3"/>
+                      </Grid>
+                    </Grid>
+                  </Viewbox>
                 </Border>
+                <TextBlock Text="Preview only. Select Apply to update the cooler." Style="{StaticResource MutedText}" Margin="0,7,0,0"/>
                 <TextBlock x:Name="BrightnessLabel" Text="Brightness" Style="{StaticResource FieldLabel}" Margin="0,14,0,3"/>
                 <Slider x:Name="Brightness" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
                         ValueChanged="ChangeLighting" AutomationProperties.Name="Lighting brightness"/>
@@ -413,6 +475,18 @@
                   </Border>
                   <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                     <StackPanel>
+                      <TextBlock Text="Administrator access" Style="{StaticResource SectionTitle}"/>
+                      <TextBlock x:Name="AppPermissionStatus" Style="{StaticResource MutedText}"/>
+                      <CheckBox x:Name="AdministratorLaunch" Content="Request administrator access when I open the app"
+                                Click="SaveAdministratorLaunch" Margin="0,8,0,0"/>
+                      <TextBlock Text="Windows asks for approval when a new session starts. You can cancel and continue with standard access."
+                                 Style="{StaticResource MutedText}" Margin="0,4,0,0"/>
+                      <Button x:Name="ElevateButton" Content="Restart as administrator" Click="Elevate" HorizontalAlignment="Left" Margin="0,9,0,0"/>
+                      <TextBlock x:Name="AdministratorNotice" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
                       <TextBlock Text="Windows startup" Style="{StaticResource SectionTitle}"/>
                       <ComboBox x:Name="StartupMode" Width="328" HorizontalAlignment="Left" AutomationProperties.Name="Launch at sign-in">
                         <ComboBoxItem Content="Off"/><ComboBoxItem Content="Start in tray at sign-in"/><ComboBoxItem Content="Start in tray with administrator access"/>
@@ -420,7 +494,6 @@
                       <CheckBox x:Name="ResumeAtSignIn" Content="Resume cooling at sign-in"/>
                       <WrapPanel Margin="0,9,0,0">
                         <Button x:Name="StartupApply" Content="Apply startup settings" Click="SaveStartup"/>
-                        <Button x:Name="ElevateButton" Content="Restart as administrator" Click="Elevate"/>
                       </WrapPanel>
                       <TextBlock x:Name="StartupStatus" Style="{StaticResource MutedText}"/>
                     </StackPanel>

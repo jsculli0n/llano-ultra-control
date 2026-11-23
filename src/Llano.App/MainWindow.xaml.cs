@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -16,8 +15,6 @@ public partial class MainWindow : Window
     private static readonly SpeedLimits CoolerLimits = V12UltraStatus.SpeedRange;
     private static readonly IReadOnlyDictionary<string, Temperature> NoTemperatures =
         new Dictionary<string, Temperature>();
-    private static readonly string SettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LlanoUltraControl", "settings.json");
     private const string DemoCpuId = "demo:cpu";
     private const string DemoGpuId = "demo:gpu";
 
@@ -58,22 +55,17 @@ public partial class MainWindow : Window
     private string[] sensorKeys = [];
     private CancellationTokenSource? capture;
 
-    public MainWindow(bool trayLaunch, bool demo) : this(trayLaunch, demo, new(SettingsPath, CoolerLimits)) { }
-
-    internal MainWindow(bool trayLaunch, bool demo, SettingsStore store)
+    internal MainWindow(bool trayLaunch, bool demo, SettingsStore store, AppSettings settings, string? startupNotice)
     {
         this.store = store;
+        this.settings = settings;
         InitializeComponent();
         SensorElevateButton.Visibility = VisibilityFor(!runningAsAdministrator);
         CpuAccessHelp.Text = runningAsAdministrator
-            ? "Administrator access is active. Some systems also need PawnIO or HWiNFO with Shared Memory Support."
-            : "Some laptops need administrator access to read CPU temperature. Windows will ask for approval.";
-        try { settings = store.Load(); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
-        {
-            settings = new();
-            message = $"Unable to load saved profiles. {error.Message}";
-        }
+            ? LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled
+                ? "Administrator access is active and a PawnIO installation was detected. HWiNFO with Shared Memory Support is another temperature source."
+                : "Administrator access is active. LibreHardwareMonitor did not detect a standalone PawnIO installation. Some CPUs need PawnIO or HWiNFO Shared Memory Support."
+            : "This app has standard permissions. Restart it with administrator access to try reading the CPU temperature.";
         AppPalette.Apply(settings.Theme);
 
         monitor = new(clock);
@@ -99,6 +91,10 @@ public partial class MainWindow : Window
             Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
         tray.DoubleClick += (_, _) => ShowDashboard();
         IsVisibleChanged += (_, _) => UpdateVisiblePage();
+        StateChanged += (_, _) =>
+        {
+            if (initialized) UpdateLighting();
+        };
         Closing += WindowClosing;
         Application.Current.Exit += ApplicationExiting;
         Application.Current.SessionEnding += WindowsSessionEnding;
@@ -112,6 +108,7 @@ public partial class MainWindow : Window
         InitializeLighting();
         if (demo) DemoToggle.IsChecked = true;
         else ChangeSimulation(this, null!);
+        message = startupNotice;
         LoadStartupState();
         PowerOffAtShutdown.IsChecked = settings.PowerOffAtShutdown;
         ChangeFanMode(this, null!);
@@ -157,6 +154,8 @@ public partial class MainWindow : Window
         }
         var cpu = PreferredTemperature(Component.Cpu);
         var gpu = PreferredTemperature(Component.Gpu);
+        hasUsableCpuTemperature = cpu is { Value: double cpuTemperature } &&
+            new Temperature(cpuTemperature, cpu.SampledAt).IsFresh(now);
         CpuTile.Text = cpu?.Display ?? "Unavailable";
         GpuTile.Text = gpu?.Display ?? "Unavailable";
         CpuSource.Text = cpu?.Name ?? "";
@@ -181,8 +180,8 @@ public partial class MainWindow : Window
         {
             FanState.WaitingForCooler => coolerStatus is { Powered: false } ? "Cooler is off. Turn it on in Settings." :
                 cooler is null ? "Cooler USB connection lost. Check the data cable." : "Waiting for the cooler to respond over USB.",
-            FanState.WaitingForSensors => automatic ? "Waiting for a CPU or GPU temperature." : "Waiting for all selected temperatures.",
-            FanState.SensorFallback => automatic ? $"Both temperature inputs are unavailable. Cooling at {rpm}." :
+            FanState.WaitingForSensors => automatic ? "Waiting for a CPU temperature." : "Waiting for all selected temperatures.",
+            FanState.SensorFallback => automatic ? $"CPU temperature lost. Using the preset maximum of {rpm}." :
                 $"A selected sensor is unavailable. Profile maximum {rpm}.",
             FanState.Fixed => $"{runningProfile?.Name}  ·  Fixed speed{action}  ·  {rpm}",
             FanState.Smart => $"{runningProfile?.Name}  ·  {(automatic ? "Automatic" : "Custom")}{action}  ·  {rpm}",
@@ -278,17 +277,23 @@ public partial class MainWindow : Window
 
     private void LoadStartupState()
     {
+        bool installed = StartupRegistration.IsInstalled;
+        ElevateButton.IsEnabled = !runningAsAdministrator;
+        AppPermissionStatus.Text = runningAsAdministrator
+            ? "App permissions: Administrator"
+            : "App permissions: Standard";
+        StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = StartupApply.IsEnabled = installed;
+        ResumeAtSignIn.IsChecked = settings.ResumeAtSignIn;
         try
         {
-            bool installed = StartupRegistration.IsInstalled;
-            StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = StartupApply.IsEnabled = installed;
             StartupMode.SelectedIndex = installed ? (int)StartupRegistration.GetMode() : 0;
-            ResumeAtSignIn.IsChecked = settings.ResumeAtSignIn;
-            ElevateButton.IsEnabled = !runningAsAdministrator;
-            StartupStatus.Text = !installed ? "Sign-in options are available with the MSI installation." :
-                runningAsAdministrator ? "Running with administrator access." : "Running with standard permissions.";
+            StartupStatus.Text = installed ? "" : "Sign-in options are available with the MSI installation.";
         }
-        catch (Exception error) { StartupStatus.Text = error.Message; }
+        catch (Exception error)
+        {
+            Debug.WriteLine(error);
+            StartupStatus.Text = "Windows Task Scheduler is unavailable. Try again after it reconnects.";
+        }
     }
 
     private async void SaveStartup(object sender, RoutedEventArgs e)
@@ -320,7 +325,7 @@ public partial class MainWindow : Window
         {
             string notice = error.NativeErrorCode == 1223 ? "Administrator approval was cancelled." : error.Message;
             if (fromSensors) ShowMessage(notice);
-            else StartupStatus.Text = notice;
+            else AdministratorNotice.Text = notice;
         }
     }
 

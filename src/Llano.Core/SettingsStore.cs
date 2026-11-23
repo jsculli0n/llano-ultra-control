@@ -11,6 +11,7 @@ public sealed record AppSettings
     public FanProfile[] Profiles { get; init; } = [new()];
     public string SelectedProfile { get; init; } = "Balanced";
     public bool ResumeAtSignIn { get; init; }
+    public bool RequestAdministratorOnLaunch { get; init; }
     public bool PowerOffAtShutdown { get; init; }
     public AppTheme Theme { get; init; } = AppTheme.EmberRed;
     public bool CloseToTray { get; init; } = true;

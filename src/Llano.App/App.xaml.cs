@@ -1,6 +1,9 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Principal;
+using System.Text.Json;
 using System.Windows;
+using Llano.Core;
 
 namespace Llano.App;
 
@@ -25,14 +28,19 @@ public partial class App : Application
             return;
         }
 
-        string userSid = WindowsIdentity.GetCurrent().User!.Value;
+        using var identity = WindowsIdentity.GetCurrent();
+        string userSid = identity.User!.Value;
+        bool trayLaunch = e.Args.Contains("--tray");
+        bool demo = e.Args.Contains("--demo");
+        bool restarting = e.Args.Contains("--restart");
+        bool showSensors = e.Args.Contains("--sensors");
         showRequest = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\LlanoUltraControl-Show-{userSid}", out bool newShowRequest);
         instance = new Mutex(false, $@"Local\LlanoUltraControl-{userSid}");
-        try { holdsMutex = instance.WaitOne(e.Args.Contains("--restart") ? TimeSpan.FromSeconds(10) : TimeSpan.Zero); }
+        try { holdsMutex = instance.WaitOne(restarting ? TimeSpan.FromSeconds(10) : TimeSpan.Zero); }
         catch (AbandonedMutexException) { holdsMutex = true; }
         if (!holdsMutex)
         {
-            if (!e.Args.Contains("--tray"))
+            if (!trayLaunch)
             {
                 if (newShowRequest)
                     MessageBox.Show("Exit the earlier version from its notification area icon, then open this version.",
@@ -44,12 +52,36 @@ public partial class App : Application
             return;
         }
 
-        var window = new MainWindow(e.Args.Contains("--tray"), e.Args.Contains("--demo"));
+        var store = new SettingsStore(AppDataFiles.SettingsPath, V12UltraStatus.SpeedRange);
+        AppSettings settings;
+        string? startupNotice = null;
+        try { settings = store.Load(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        {
+            settings = new();
+            startupNotice = $"Unable to load saved profiles. {error.Message}";
+        }
+
+        if (settings.RequestAdministratorOnLaunch && !trayLaunch && !demo && !restarting && !StartupRegistration.IsElevated)
+        {
+            try
+            {
+                RestartElevated(demo, showSensors);
+                return;
+            }
+            catch (Win32Exception error)
+            {
+                startupNotice = error.NativeErrorCode == 1223 ? "Opened with standard permissions because administrator approval was cancelled."
+                    : $"Opened with standard permissions. Administrator launch failed: {error.Message}";
+            }
+        }
+
+        var window = new MainWindow(trayLaunch, demo, store, settings, startupNotice);
         MainWindow = window;
         showListener = ThreadPool.RegisterWaitForSingleObject(showRequest,
             (_, _) => Dispatcher.InvokeAsync(window.ShowDashboard), null, Timeout.Infinite, executeOnlyOnce: false);
-        if (e.Args.Contains("--sensors")) window.ShowSensors();
-        if (!e.Args.Contains("--tray")) window.Show();
+        if (showSensors) window.ShowSensors();
+        if (!trayLaunch) window.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -73,7 +105,7 @@ public partial class App : Application
         start.ArgumentList.Add("--restart");
         if (demo) start.ArgumentList.Add("--demo");
         if (showSensors) start.ArgumentList.Add("--sensors");
-        using var process = Process.Start(start);
-        if (process is not null) Current.Shutdown();
+        using var process = Process.Start(start) ?? throw new Win32Exception("Windows couldn't start an administrator session for the app.");
+        Current.Shutdown();
     }
 }

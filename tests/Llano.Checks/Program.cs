@@ -91,7 +91,7 @@ Equal(FanState.Paused, controller.Update(At(1), Readings(1, 65, 65), true).State
 
 var balanced = CoolingPresets.Create(CoolingMode.Balanced, 0);
 controller.Start(balanced);
-Equal(FanState.WaitingForSensors, controller.Update(At(0), Readings(0, null, null), true).State, "automatic waits for a usable input");
+Equal(FanState.WaitingForSensors, controller.Update(At(0), Readings(0, null, null), true).State, "automatic waits for a CPU input");
 Equal(600, controller.Update(At(1), Readings(1, 50, null, automatic: true), true).NewCommand, "automatic starts from CPU alone");
 Equal(null, controller.Update(At(2), Readings(2, 98, null, automatic: true), true).NewCommand, "single CPU burst does not send an RPM change");
 Equal(null, controller.Update(At(3), Readings(3, 50, null, automatic: true), true).NewCommand, "return to normal without a speed jump");
@@ -122,7 +122,7 @@ for (int second = 30; second < 45; second++)
 Equal(previous - 100, controller.Update(At(45), Readings(45, 50, null, automatic: true), true).NewCommand, "cooldown steps down by 100 RPM");
 Equal(null, controller.Update(At(47), Readings(47, 50, null, automatic: true), true).NewCommand, "cooldown waits at least three seconds between drops");
 Equal(previous - 200, controller.Update(At(48), Readings(48, 50, null, automatic: true), true).NewCommand, "cooldown continues without restarting the hold");
-Equal(2800, controller.Update(At(54), Readings(48, 50, null, automatic: true), true).NewCommand, "all stale inputs trigger immediate fallback");
+Equal(2800, controller.Update(At(54), Readings(54, null, 50, automatic: true), true).NewCommand, "CPU loss triggers immediate fallback even when the GPU is readable");
 Equal(2800, controller.Update(At(55), Readings(55, 50, null, automatic: true), true).TargetRpm, "fallback recovery starts with a hold");
 
 controller.Start(balanced);
@@ -134,13 +134,14 @@ controller.Start(balanced);
 Equal(2800, controller.Update(At(0), Readings(0, 50, 93, automatic: true), true, currentRpm: 600).NewCommand, "extreme GPU heat applies maximum immediately");
 Equal(FanState.DialOverride, controller.Update(At(1), Readings(1, 50, 93, automatic: true), true, physicalOverride: true).State, "automatic mode yields to the physical dial");
 controller.Start(CoolingPresets.Create(CoolingMode.Quiet, 0));
-Equal(300, controller.Update(At(0), Readings(0, null, 45, automatic: true), true).NewCommand, "quiet starts at 300 RPM with GPU alone");
+Equal(new FanDecision(FanState.WaitingForSensors, null, null),
+    controller.Update(At(0), Readings(0, null, 45, automatic: true), true), "GPU alone cannot start an automatic preset");
 Equal(300, controller.Update(At(1), Readings(1, 50, 45, automatic: true), true).TargetRpm, "quiet holds 300 RPM at light load");
 controller.Start(CoolingPresets.Create(CoolingMode.Quiet, 0));
 Equal(400, controller.Update(At(0), Readings(0, 49, 45, automatic: true), true, currentRpm: 400).TargetRpm, "quiet starts from the current speed");
 Equal(300, controller.Update(At(15), Readings(15, 49, 45, automatic: true), true).TargetRpm, "quiet reaches 300 after cooldown");
 controller.Start(CoolingPresets.Create(CoolingMode.Boost, 0));
-Equal(1000, controller.Update(At(0), Readings(0, null, 45, automatic: true), true).NewCommand, "boost runs faster at the same GPU temperature");
+Equal(1000, controller.Update(At(0), Readings(0, 50, 45, automatic: true), true).NewCommand, "boost runs faster under the same temperatures");
 
 string testSettings = Path.Combine(Path.GetTempPath(), $"Llano-check-{Guid.NewGuid():N}.json");
 try
@@ -154,6 +155,7 @@ try
     Equal(1400, legacy.ManualRpm, "preserve legacy cooling preferences");
     Equal(AppTheme.EmberRed, legacy.Theme, "legacy settings use the default theme");
     Equal(true, legacy.CloseToTray, "legacy settings preserve close-to-tray");
+    Equal(false, legacy.RequestAdministratorOnLaunch, "existing settings do not request administrator access automatically");
     foreach (var theme in Enum.GetValues<AppTheme>())
     {
         store.Save(legacy with { Theme = theme, CloseToTray = false });
@@ -170,17 +172,48 @@ try
     Equal(true, loaded.ResumeAtSignIn, "persist sign-in selection");
     var newLight = new Lighting(true, LightingEffect.ColorChase, V12UltraStatus.Palette[0], 40, 3);
     store.Save(loaded with { LastCoolingMode = CoolingMode.Manual, ManualRpm = 1400, LastLighting = newLight, PowerOffAtShutdown = true,
-        LightingPresets = [new("Evening", newLight)] });
+        RequestAdministratorOnLaunch = true, LightingPresets = [new("Evening", newLight)] });
     var updated = store.Load();
     Equal(CoolingMode.Manual, updated.LastCoolingMode, "persist last cooling mode");
     Equal(1400, updated.ManualRpm, "persist selected manual speed");
     Equal(true, updated.PowerOffAtShutdown, "persist cooler shutdown preference");
+    Equal(true, updated.RequestAdministratorOnLaunch, "persist administrator launch preference");
     Equal(newLight, updated.LastLighting, "persist last lighting look");
     Equal(new LightingPreset("Evening", newLight), updated.LightingPresets.Single(), "persist a custom lighting preset");
     store.Save(new());
     Equal("Balanced", store.Load().SelectedProfile, "atomically replace settings");
 }
 finally { File.Delete(testSettings); }
+
+string settingsDirectory = Path.Combine(Path.GetTempPath(), $"Llano-uninstall-check-{Guid.NewGuid():N}");
+Directory.CreateDirectory(settingsDirectory);
+string config = Path.Combine(settingsDirectory, "settings.json");
+string temporaryConfig = Path.Combine(settingsDirectory, $"{Guid.NewGuid():N}.tmp");
+string retainedFile = Path.Combine(settingsDirectory, "notes.tmp");
+try
+{
+    File.WriteAllText(config, "{}");
+    File.WriteAllText(temporaryConfig, "{}");
+    File.WriteAllText(retainedFile, "keep this");
+    AppDataFiles.RemoveSettings(settingsDirectory);
+    Equal(false, File.Exists(config), "uninstall removes the saved settings");
+    Equal(false, File.Exists(temporaryConfig), "uninstall removes interrupted settings writes");
+    Equal(true, File.Exists(retainedFile), "uninstall preserves files it did not create");
+    File.Delete(retainedFile);
+    AppDataFiles.RemoveSettings(settingsDirectory);
+    Equal(false, Directory.Exists(settingsDirectory), "uninstall removes the empty app data folder");
+    AppDataFiles.RemoveSettings(settingsDirectory);
+}
+finally
+{
+    if (Directory.Exists(settingsDirectory))
+    {
+        File.Delete(config);
+        File.Delete(temporaryConfig);
+        File.Delete(retainedFile);
+        Directory.Delete(settingsDirectory);
+    }
+}
 
 Console.WriteLine("All fan-control and settings checks passed.");
 return 0;

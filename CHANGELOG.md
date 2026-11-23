@@ -1,5 +1,14 @@
 # Release notes
 
+## 1.0.3
+
+- Added an optional administrator request on launch. The app opens with standard permissions if you cancel the Windows prompt.
+- Put the app icon in the window header and redesigned the lighting preview with distinct breathing, gradient, and chase animations.
+- Quiet, Balanced, and Boost require a fresh CPU temperature before starting. If the CPU reading is lost while a preset is active, the preset uses its maximum speed until readings return.
+- Fixed the installer flow that opens the app after setup.
+- Added uninstall confirmation and completion screens. Uninstall removes the app, its shortcuts, its sign-in entries, and the uninstalling Windows account’s saved profiles and preferences. Upgrades preserve saved settings.
+- Fixed Windows startup settings showing a missing-file error when a sign-in task had never been created. Settings now displays the app's permission level separately, and Sensors shows whether LibreHardwareMonitor detected a standalone PawnIO installation.
+
 ## 1.0.2
 
 - Added a setup screen with an optional desktop shortcut and an option to open the app when setup finishes.

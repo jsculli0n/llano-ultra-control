@@ -8,7 +8,7 @@ Use a clean Windows 11 x64 test machine or disposable VM. Keep a test copy of th
 - Extract the ZIP and launch it as a standard user without a separately installed .NET runtime. Check that cooling starts paused, startup is described as MSI-only, and the About documents open.
 - Install the MSI. Check the Start menu shortcut, version in About, and standard startup at sign-in. Verify that granting administrator startup is optional and can be undone.
 - Install 0.7.0, create a named profile, choose a startup preference, and upgrade. Verify that the newer version preserves the profile and startup preference. The theme should default to Ember Red.
-- Uninstall and confirm the shortcut, installed app, and its scheduled startup tasks are removed. Leave the user’s local settings available for reinstall.
+- Uninstall and confirm the shortcuts, installed app, scheduled startup tasks, and the uninstalling account’s saved profiles and preferences are removed. Reinstall and check that it starts with the default settings.
 
 ## Hardware and shutdown
 

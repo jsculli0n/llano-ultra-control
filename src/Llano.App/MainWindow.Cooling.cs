@@ -7,6 +7,7 @@ namespace Llano.App;
 public partial class MainWindow
 {
     private CoolingMode coolingMode = CoolingMode.Balanced;
+    private bool hasUsableCpuTemperature;
 
     private void LoadCoolingChoice()
     {
@@ -54,11 +55,14 @@ public partial class MainWindow
     private void UpdateCoolingActions()
     {
         bool applied = IsCoolingChoiceApplied;
+        bool needsCpu = coolingMode != CoolingMode.Manual && !hasUsableCpuTemperature;
         string choice = coolingMode == CoolingMode.Manual ? "manual speed" : coolingMode.ToString();
         StartControl.Content = applied
             ? driveHardware ? $"{coolingMode} applied" : $"{coolingMode} previewing"
             : CanControlCooler ? $"_Apply {choice}" : $"_Preview {choice}";
-        StartControl.IsEnabled = !powerChanging && !applied;
+        StartControl.IsEnabled = !powerChanging && !applied && !needsCpu;
+        CoolingCpuRequired.Visibility = VisibilityFor(needsCpu);
+        CoolingSensorHelp.Visibility = VisibilityFor(!simulate);
         AppliedModeLabel.Text = controller.Enabled && runningProfile is { } profile
             ? driveHardware ? $"In use: {profile.Name}" : $"Preview: {profile.Name}"
             : "";
@@ -76,6 +80,11 @@ public partial class MainWindow
         try
         {
             var next = custom ? ReadProfile(forPreview: true) : CoolingProfile();
+            if (next.Mode == FanMode.Automatic && !hasUsableCpuTemperature)
+            {
+                ShowMessage("Automatic cooling needs a CPU temperature. Check Sensors or choose Manual.");
+                return;
+            }
             bool hardware = CanControlCooler;
             runningProfile = next;
             activeCoolingMode = custom ? null : coolingMode;

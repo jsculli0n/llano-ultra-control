@@ -14,6 +14,7 @@ public partial class MainWindow
     {
         ThemePicker.SelectedIndex = (int)settings.Theme;
         CloseToTray.IsChecked = settings.CloseToTray;
+        AdministratorLaunch.IsChecked = settings.RequestAdministratorOnLaunch;
         AboutVersion.Text = $"Version {ReleaseVersion}  ·  {(StartupRegistration.IsInstalled ? "Installed" : "Portable")}";
         foreach (var button in new[] { OpenGuide, OpenLicence, OpenNotices })
             button.IsEnabled = File.Exists(Path.Combine(AppContext.BaseDirectory, (string)button.Tag));
@@ -61,6 +62,20 @@ public partial class MainWindow
         {
             CloseToTray.IsChecked = settings.CloseToTray;
             ShowMessage("Couldn’t save the tray preference. " + error.Message);
+        }
+    }
+
+    private void SaveAdministratorLaunch(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Persist(settings with { RequestAdministratorOnLaunch = AdministratorLaunch.IsChecked == true });
+            AdministratorNotice.Text = "";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            AdministratorLaunch.IsChecked = settings.RequestAdministratorOnLaunch;
+            AdministratorNotice.Text = "Couldn’t save the launch preference. " + error.Message;
         }
     }
 

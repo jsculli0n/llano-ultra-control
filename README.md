@@ -2,12 +2,12 @@
 
 Control the **Llano V12 Ultra cooling pad** from Windows 11 x64. Choose automatic or manual fan control, build temperature curves, and adjust lighting and power over USB.
 
-## Download 1.0.3
+## Download 1.0.4
 
 | Download | When to choose it |
 | --- | --- |
-| **[Portable ZIP](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.3/LlanoUltraControl-1.0.3-win-x64-portable.zip)** | Recommended. Extract the ZIP and run `LlanoUltraControl.exe`. Keep the extracted files together. |
-| [Windows MSI](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.3/LlanoUltraControl-1.0.3-win-x64.msi) | Adds a Start menu shortcut, with options for a desktop shortcut and opening the app after setup. |
+| **[Portable ZIP](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.4/LlanoUltraControl-1.0.4-win-x64-portable.zip)** | Recommended. Extract the ZIP and run `LlanoUltraControl.exe`. Keep the extracted files together. |
+| [Windows MSI](https://github.com/jsculli0n/llano-ultra-control/releases/download/v1.0.4/LlanoUltraControl-1.0.4-win-x64.msi) | Adds a Start menu shortcut, with options for a desktop shortcut and opening the app after setup. |
 | [Release notes and checksums](https://github.com/jsculli0n/llano-ultra-control/releases/latest) | See what’s included and verify your download. |
 
 ## Get started

@@ -1,5 +1,10 @@
 # Release notes
 
+## 1.0.4
+
+- Sign-in cooling waits for five seconds of fresh temperature samples. Automatic presets confirm critical heat during startup before using the maximum RPM.
+- Added a manual update check under **Settings → About**. New versions open on GitHub for download.
+
 ## 1.0.3
 
 - Added an optional administrator request on launch. The app opens with standard permissions if you cancel the Windows prompt.

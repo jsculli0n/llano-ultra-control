@@ -143,6 +143,34 @@ Equal(300, controller.Update(At(15), Readings(15, 49, 45, automatic: true), true
 controller.Start(CoolingPresets.Create(CoolingMode.Boost, 0));
 Equal(1000, controller.Update(At(0), Readings(0, 50, 45, automatic: true), true).NewCommand, "boost runs faster under the same temperatures");
 
+controller.Start(balanced, waitForStableTemperatures: true);
+Equal(FanState.StabilizingSensors, controller.Update(At(0), Readings(0, 103, 93, automatic: true), true).State,
+    "sign-in ignores an initial temperature spike");
+Equal(null, controller.Update(At(4), Readings(0, 50, null, automatic: true), true).NewCommand,
+    "repeated startup snapshot cannot arm cooling");
+Equal(FanState.WaitingForSensors, controller.Update(At(5), Readings(5, null, 50, automatic: true), true).State,
+    "a missing CPU resets startup settling without a maximum RPM fallback");
+for (int second = 6; second <= 10; second++)
+    Equal(null, controller.Update(At(second), Readings(second, 50, null, automatic: true), true, currentRpm: 600).NewCommand,
+        "sign-in leaves the fan alone during settling");
+Equal(600, controller.Update(At(11), Readings(11, 103, 93, automatic: true), true, currentRpm: 600).NewCommand,
+    "a single critical reading when sign-in cooling starts keeps the observed RPM");
+Equal(null, controller.Update(At(12), Readings(12, null, 50, automatic: true), true).NewCommand,
+    "a brief CPU dropout as sign-in cooling starts does not command maximum RPM");
+Equal(null, controller.Update(At(13), Readings(13, 51, null, automatic: true), true).NewCommand,
+    "sign-in cooling continues from the same speed when CPU readings return");
+Equal(2800, controller.Update(At(17), Readings(17, null, 50, automatic: true), true).NewCommand,
+    "the normal loss safeguard applies once sign-in has settled");
+
+controller.Start(balanced, waitForStableTemperatures: true);
+for (int second = 0; second < 5; second++)
+    controller.Update(At(second), Readings(second, 50, null, automatic: true), true, currentRpm: 600);
+Equal(600, controller.Update(At(5), Readings(5, 103, null, automatic: true), true, currentRpm: 600).NewCommand,
+    "critical heat at the end of sign-in settling needs confirmation");
+controller.Update(At(6), Readings(6, 103, null, automatic: true), true);
+Equal(2800, controller.Update(At(7), Readings(7, 103, null, automatic: true), true).NewCommand,
+    "continuous critical heat still commands maximum during sign-in");
+
 string testSettings = Path.Combine(Path.GetTempPath(), $"Llano-check-{Guid.NewGuid():N}.json");
 try
 {

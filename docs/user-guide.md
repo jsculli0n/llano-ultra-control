@@ -21,6 +21,8 @@ Connect the cooler’s power adapter and USB data cable. Turn the cooler on and 
 - **Cooler off.** In **Settings → Cooler & USB**, choose **Turn cooler on** or hold the cooler’s physical power button. Power changes may interrupt devices attached to the cooler’s USB hub. Eject attached storage before changing power.
 - **CPU temperature unavailable.** On **Sensors**, select **Restart as administrator** and approve the Windows prompt. Some laptops also need optional [PawnIO](https://pawnio.eu/) or can get their readings from HWiNFO with **Shared Memory Support** enabled. Check **Settings → Diagnostics** for the current sensor source. Manual speed still works when the cooler is reachable over USB.
 - **Administrator access on launch.** In **Settings → General**, turn on **Request administrator access when I open the app**. Windows prompts when you open a new session. If you cancel, the app opens with standard permissions. The **Windows startup** option controls the separate sign-in launch.
+- **Resume cooling at sign-in.** Temperature-based profiles wait for five seconds of fresh readings before taking control. A preset still responds to sustained critical heat.
+- **Updates.** Select **Settings → About → Check for updates**. If a newer version is available, open the GitHub release page to download it.
 - **Turn off the cooler when Windows shuts down.** This is off by default and applies to restart too. The app must be running and reach the cooler before Windows disconnects USB. The power command was tested directly on the cooler. End-to-end Windows shutdown and restart were not tested for this release.
 - **Themes and tray.** Switch themes or change what closing the window does under **Settings → General**. The app closes to the tray by default. Use the tray menu to reopen it or exit.
 - **Simulation.** Enable it in **Settings → Diagnostics** and use **Simulation inputs** on Cooling. The app reads USB status without writing settings while in simulation.
@@ -30,7 +32,7 @@ Connect the cooler’s power adapter and USB data cable. Turn the cooler on and 
 The ZIP and MSI are unsigned. Windows may display a warning or block them under a local security policy. Download from the project’s release and compare the SHA-256 value with `SHA256SUMS.txt`. [Microsoft SmartScreen guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
 
 ```powershell
-Get-FileHash .\LlanoUltraControl-1.0.3-win-x64-portable.zip -Algorithm SHA256
+Get-FileHash .\LlanoUltraControl-1.0.4-win-x64-portable.zip -Algorithm SHA256
 ```
 
 ## Uninstall

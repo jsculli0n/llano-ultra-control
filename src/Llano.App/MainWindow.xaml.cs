@@ -122,7 +122,7 @@ public partial class MainWindow : Window
                 driveHardware = true;
                 runningProfile = saved;
                 activeCoolingMode = settings.LastCoolingMode;
-                controller.Start(saved);
+                controller.Start(saved, waitForStableTemperatures: true);
             }
         }
         _ = Task.Run(() => monitor.RunAsync(lifetime.Token));
@@ -181,6 +181,7 @@ public partial class MainWindow : Window
             FanState.WaitingForCooler => coolerStatus is { Powered: false } ? "Cooler is off. Turn it on in Settings." :
                 cooler is null ? "Cooler USB connection lost. Check the data cable." : "Waiting for the cooler to respond over USB.",
             FanState.WaitingForSensors => automatic ? "Waiting for a CPU temperature." : "Waiting for all selected temperatures.",
+            FanState.StabilizingSensors => "Letting temperature readings settle before resuming cooling.",
             FanState.SensorFallback => automatic ? $"CPU temperature lost. Using the preset maximum of {rpm}." :
                 $"A selected sensor is unavailable. Profile maximum {rpm}.",
             FanState.Fixed => $"{runningProfile?.Name}  ·  Fixed speed{action}  ·  {rpm}",

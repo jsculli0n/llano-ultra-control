@@ -139,6 +139,7 @@ public partial class MainWindow
                 FanState.SensorFallback => "Temperature input lost",
                 FanState.WaitingForCooler => "Waiting for cooler",
                 FanState.WaitingForSensors => "Waiting for temperature",
+                FanState.StabilizingSensors => "Checking temperature readings",
                 FanState.DialOverride => "Physical dial control",
                 FanState.Fixed => "Fixed speed active",
                 FanState.Smart => "Custom curve active",

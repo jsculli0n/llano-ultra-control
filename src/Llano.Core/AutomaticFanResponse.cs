@@ -29,7 +29,7 @@ internal sealed class AutomaticFanResponse(SpeedLimits limits)
     }
 
     public (int Rpm, FanMotion Motion) Update(FanProfile profile, TimeSpan now,
-        Temperature? cpu, Temperature? gpu, int? target, int? currentRpm)
+        Temperature? cpu, Temperature? gpu, int? target, int? currentRpm, bool confirmExtreme)
     {
         double? filteredCpu = cpuFilter.Update(cpu);
         double? filteredGpu = gpuFilter.Update(gpu);
@@ -38,16 +38,18 @@ internal sealed class AutomaticFanResponse(SpeedLimits limits)
         int demand = Demand(filteredCpu, filteredGpu);
         bool hot = Sustained(ref hotSince, LatestAbove(cpu, 92, gpu, 84));
         bool critical = Sustained(ref criticalSince, LatestAbove(cpu, 98, gpu, 89));
-        if (critical || cpu is { Celsius: >= 102 } || gpu is { Celsius: >= 92 })
+        if (critical || (!confirmExtreme && (cpu is { Celsius: >= 102 } || gpu is { Celsius: >= 92 })))
         {
             risingSince = fallingSince = null;
             return Change(maximum, FanMotion.HighTemperature, now);
         }
 
-        if (target is null && currentRpm is null)
+        if (target is null && currentRpm is null && !confirmExtreme)
             return Change(demand, FanMotion.Steady, now);
 
-        int previous = target ?? limits.Quantize(currentRpm!.Value, limits.Minimum, limits.Maximum);
+        int previous = target ?? (currentRpm is int observed
+            ? limits.Quantize(observed, limits.Minimum, limits.Maximum)
+            : minimum);
         lastChange ??= now;
         if (hot)
             demand = Math.Max(demand, Demand(cpu?.Celsius, gpu?.Celsius));

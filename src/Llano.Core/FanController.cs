@@ -2,12 +2,13 @@ namespace Llano.Core;
 
 public readonly record struct Temperature(double Celsius, TimeSpan SampledAt)
 {
+    internal static readonly TimeSpan MaximumAge = TimeSpan.FromSeconds(5);
     public string? Source { get; init; }
     public bool IsFresh(TimeSpan now) => double.IsFinite(Celsius) && Celsius is >= -40 and <= 150 &&
-        now >= SampledAt && now - SampledAt <= TimeSpan.FromSeconds(5);
+        now >= SampledAt && now - SampledAt <= MaximumAge;
 }
 
-public enum FanState { Paused, WaitingForCooler, WaitingForSensors, Fixed, Smart, SensorFallback, DialOverride }
+public enum FanState { Paused, WaitingForCooler, WaitingForSensors, Fixed, Smart, SensorFallback, DialOverride, StabilizingSensors }
 public readonly record struct FanDecision(FanState State, int? TargetRpm, int? NewCommand)
 {
     public FanMotion Motion { get; init; }
@@ -16,20 +17,27 @@ public readonly record struct FanDecision(FanState State, int? TargetRpm, int? N
 public sealed class FanController(SpeedLimits limits)
 {
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan SignInWarmup = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StartSensorLossGrace = TimeSpan.FromSeconds(3);
     private const double CoolingHysteresis = 3;
     private readonly AutomaticFanResponse automatic = new(limits);
     private FanProfile? profile;
     private int? target;
     private TimeSpan? coolingSince;
-    private bool armed;
+    private TimeSpan? armedAt;
+    private bool waitForStableTemperatures;
+    private TimeSpan? firstWarmupSample;
+    private TimeSpan? latestWarmupSample;
+    private TimeSpan? missingSince;
     private bool dialOverride;
 
     public bool Enabled => profile is not null;
 
-    public void Start(FanProfile next)
+    public void Start(FanProfile next, bool waitForStableTemperatures = false)
     {
         if (next.Validate(limits, requireSensors: true) is { } error) throw new ArgumentException(error, nameof(next));
         profile = next;
+        this.waitForStableTemperatures = waitForStableTemperatures;
         dialOverride = false;
         InvalidateConnection();
     }
@@ -43,7 +51,7 @@ public sealed class FanController(SpeedLimits limits)
 
     public void InvalidateConnection()
     {
-        armed = false;
+        armedAt = firstWarmupSample = latestWarmupSample = missingSince = null;
         target = null;
         coolingSince = null;
         automatic.Reset();
@@ -72,15 +80,24 @@ public sealed class FanController(SpeedLimits limits)
             if (cpu is null)
             {
                 automatic.ResetReadings();
-                return Missing(current);
+                return Missing(current, now);
             }
-            armed = true;
-            var (rpm, motion) = automatic.Update(current, now, cpu, FreshReading(CoolingPresets.GpuInput), target, currentRpm);
+            if (!Ready(cpu.Value.SampledAt)) return new(FanState.StabilizingSensors, null, null);
+            armedAt ??= now;
+            missingSince = null;
+            bool confirmExtreme = InSignInWarmup(now);
+            var (rpm, motion) = automatic.Update(current, now, cpu, FreshReading(CoolingPresets.GpuInput), target, currentRpm, confirmExtreme);
             return Apply(FanState.Smart, rpm) with { Motion = motion };
         }
-        if (current.ActiveSensors.Any(id => FreshReading(id) is null)) return Missing(current);
-
-        armed = true;
+        TimeSpan oldestSample = now;
+        foreach (string id in current.ActiveSensors)
+        {
+            if (FreshReading(id) is not { } reading) return Missing(current, now);
+            if (reading.SampledAt < oldestSample) oldestSample = reading.SampledAt;
+        }
+        if (!Ready(oldestSample)) return new(FanState.StabilizingSensors, null, null);
+        armedAt ??= now;
+        missingSince = null;
         int requested = RequestedRpm(0);
         if (target is not { } previous || requested >= previous)
         {
@@ -106,11 +123,30 @@ public sealed class FanController(SpeedLimits limits)
         int RequestedRpm(double offset) => Rpm(current, Evaluate(current, readings, offset));
     }
 
-    private FanDecision Missing(FanProfile current)
+    private FanDecision Missing(FanProfile current, TimeSpan now)
     {
         coolingSince = null;
-        return armed ? Apply(FanState.SensorFallback, Rpm(current, current.MaximumRpm)) :
-            new(FanState.WaitingForSensors, null, null);
+        firstWarmupSample = latestWarmupSample = null;
+        if (!armedAt.HasValue) return new(FanState.WaitingForSensors, null, null);
+        if (InSignInWarmup(missingSince ?? now))
+        {
+            missingSince ??= now;
+            if (now - missingSince.Value < StartSensorLossGrace)
+                return new(FanState.StabilizingSensors, null, null);
+        }
+        return Apply(FanState.SensorFallback, Rpm(current, current.MaximumRpm));
+    }
+
+    private bool InSignInWarmup(TimeSpan time) =>
+        waitForStableTemperatures && armedAt is { } started && time - started < SignInWarmup;
+
+    private bool Ready(TimeSpan sample)
+    {
+        if (!waitForStableTemperatures || armedAt.HasValue) return true;
+        if (latestWarmupSample is not { } previous || sample < previous || sample - previous > Temperature.MaximumAge)
+            firstWarmupSample = sample;
+        latestWarmupSample = sample;
+        return sample - (firstWarmupSample ?? sample) >= SignInWarmup;
     }
 
     public static double Interpolate(IReadOnlyList<CurvePoint> points, double temperature)

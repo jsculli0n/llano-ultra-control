@@ -547,6 +547,11 @@
                       <TextBlock Text="Llano Ultra Control" Style="{StaticResource SectionTitle}"/>
                       <TextBlock x:Name="AboutVersion" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,0,8"/>
                       <TextBlock Text="Independent open-source project. Unaffiliated with llano." Style="{StaticResource MutedText}"/>
+                      <WrapPanel Margin="0,10,0,0">
+                        <Button x:Name="CheckUpdatesButton" Content="Check for updates" Click="CheckForUpdates"/>
+                        <Button x:Name="OpenUpdateButton" Content="Open GitHub release" Click="OpenUpdate" Visibility="Collapsed"/>
+                      </WrapPanel>
+                      <TextBlock x:Name="UpdateStatus" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                   </Border>
                   <Border Style="{StaticResource Card}">

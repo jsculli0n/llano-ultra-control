@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Net.Http;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Llano.Core;
@@ -9,6 +11,7 @@ namespace Llano.App;
 public partial class MainWindow
 {
     internal static string ReleaseVersion => typeof(MainWindow).Assembly.GetName().Version!.ToString(3);
+    private Version? availableUpdate;
 
     private void InitializePreferences()
     {
@@ -94,6 +97,55 @@ public partial class MainWindow
             AboutStatus.Text = "";
         }
         catch (Win32Exception error) { AboutStatus.Text = "Couldn’t open the document. " + error.Message; }
+    }
+
+    private async void CheckForUpdates(object sender, RoutedEventArgs e)
+    {
+        CheckUpdatesButton.IsEnabled = false;
+        OpenUpdateButton.Visibility = Visibility.Collapsed;
+        availableUpdate = null;
+        UpdateStatus.Text = "Checking GitHub…";
+        try
+        {
+            Version latest = await ReleaseUpdates.LatestAsync(lifetime.Token);
+            if (closing) return;
+            int comparison = latest.CompareTo(Version.Parse(ReleaseVersion));
+            UpdateStatus.Text = comparison switch
+            {
+                > 0 => $"Version {latest} is available.",
+                0 => "You have the latest release.",
+                _ => $"The latest public release is {latest}. You’re running {ReleaseVersion}."
+            };
+            if (comparison > 0)
+            {
+                availableUpdate = latest;
+                OpenUpdateButton.Visibility = Visibility.Visible;
+            }
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is HttpRequestException or OperationCanceledException or IOException or JsonException or InvalidDataException)
+        {
+            Debug.WriteLine(error);
+            if (!closing) UpdateStatus.Text = "Couldn’t check GitHub for updates. Try again later.";
+        }
+        finally
+        {
+            if (!closing) CheckUpdatesButton.IsEnabled = true;
+        }
+    }
+
+    private void OpenUpdate(object sender, RoutedEventArgs e)
+    {
+        if (availableUpdate is not { } version) return;
+        try
+        {
+            using var browser = Process.Start(new ProcessStartInfo(ReleaseUpdates.ReleasePage(version)) { UseShellExecute = true });
+        }
+        catch (Win32Exception error)
+        {
+            Debug.WriteLine(error);
+            UpdateStatus.Text = "Couldn’t open the GitHub release in your browser.";
+        }
     }
 
     private void UpdateRecoveryHelp()

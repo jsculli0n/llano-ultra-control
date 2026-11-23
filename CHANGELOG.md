@@ -1,5 +1,10 @@
 # Release notes
 
+## 1.0.7
+
+- Replaced the administrator launch options with one **Enable sensor and FPS access** setting in the MSI-installed app. Existing helper approvals carry over, and older elevated sign-in tasks migrate to standard startup with on-demand access.
+- The desktop overlay now requests hardware CPU clock readings when needed, even if a CPU temperature is already available. The Windows frequency remains available as a fallback.
+
 ## 1.0.6
 
 - Added an optional MSI-only telemetry helper. Approve it once to let the standard-permission app request supported CPU readings and FPS on demand.

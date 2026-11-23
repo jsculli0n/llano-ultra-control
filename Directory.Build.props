@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.0.6</Version>
+    <Version>1.0.7</Version>
     <Authors>Llano Ultra Monitor contributors</Authors>
     <Copyright>Copyright (c) 2026 Llano Ultra Monitor contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

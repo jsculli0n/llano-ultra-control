@@ -34,7 +34,7 @@ Connect the cooler’s power adapter and USB data cable. Turn the cooler on and 
 The ZIP and MSI are unsigned. Windows may display a warning or block them under a local security policy. Download from the project’s release and compare the SHA-256 value with `SHA256SUMS.txt`. [Microsoft SmartScreen guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
 
 ```powershell
-Get-FileHash .\LlanoUltraControl-1.0.6-win-x64-portable.zip -Algorithm SHA256
+Get-FileHash .\LlanoUltraControl-1.0.7-win-x64-portable.zip -Algorithm SHA256
 ```
 
 ## Uninstall

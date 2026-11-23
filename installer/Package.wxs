@@ -3,7 +3,11 @@
            UpgradeCode="2148F8B8-9775-483C-8D49-418EFB61ADE9" Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Llano Ultra Control is already installed." />
     <MediaTemplate EmbedCab="yes" />
-    <Launch Condition="Installed OR (VersionNT64 AND (WindowsBuild &gt;= 22000))"
+    <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
+      <RegistrySearch Id="WindowsBuildNumber" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                      Name="CurrentBuildNumber" Type="raw" Bitness="always64" />
+    </Property>
+    <Launch Condition="Installed OR (VersionNT64 AND WINDOWSBUILDNUMBER &gt;= 22000)"
             Message="Llano Ultra Control requires Windows 11 x64." />
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Llano Ultra Control">

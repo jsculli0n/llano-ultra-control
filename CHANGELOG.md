@@ -1,5 +1,9 @@
 # Release notes
 
+## 1.0.1
+
+- Fixed the MSI rejecting compatible Windows 11 x64 systems by reading the build number from the 64-bit Windows registry.
+
 ## 1.0.0
 
 - First public release with automatic cooling presets, manual RPM, custom fan curves, sensor readings, and USB lighting and power control.

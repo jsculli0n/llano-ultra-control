@@ -473,7 +473,7 @@
                       <TextBlock Text="The shutdown option needs the app running and the cooler reachable over USB. Power changes may interrupt devices connected to the cooler’s USB hub." Margin="0,0,0,8"/>
                       <TextBlock Text="Distributed under the MIT licence, as is and without warranty." Margin="0,0,0,10"/>
                       <WrapPanel>
-                        <Button x:Name="OpenGuide" Content="Quick start and troubleshooting" Tag="README.md" Click="OpenReleaseDocument"/>
+                        <Button x:Name="OpenGuide" Content="Quick start and troubleshooting" Tag="docs\user-guide.md" Click="OpenReleaseDocument"/>
                         <Button x:Name="OpenLicence" Content="MIT licence" Tag="LICENSE" Click="OpenReleaseDocument"/>
                         <Button x:Name="OpenNotices" Content="Third-party notices" Tag="THIRD-PARTY-NOTICES.md" Click="OpenReleaseDocument"/>
                       </WrapPanel>

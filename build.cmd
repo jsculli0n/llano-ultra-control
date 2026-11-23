@@ -52,7 +52,9 @@ copy /y THIRD-PARTY-NOTICES.md "%LLANO_PUBLISH_DIR%\THIRD-PARTY-NOTICES.md" >nul
 copy /y README.md "%LLANO_PUBLISH_DIR%\README.md" >nul || goto failure
 copy /y CHANGELOG.md "%LLANO_PUBLISH_DIR%\CHANGELOG.md" >nul || goto failure
 if not exist "%LLANO_PUBLISH_DIR%\docs" mkdir "%LLANO_PUBLISH_DIR%\docs" || goto failure
-copy /y docs\usb-protocol.md "%LLANO_PUBLISH_DIR%\docs\usb-protocol.md" >nul || goto failure
+copy /y docs\*.md "%LLANO_PUBLISH_DIR%\docs\" >nul || goto failure
+if not exist "%LLANO_PUBLISH_DIR%\docs\images" mkdir "%LLANO_PUBLISH_DIR%\docs\images" || goto failure
+copy /y docs\images\cooling.png "%LLANO_PUBLISH_DIR%\docs\images\cooling.png" >nul || goto failure
 copy /y "%NUGET_PACKAGES%\hidsharp\2.6.4\LICENSE.txt" "%LLANO_PUBLISH_DIR%\HidSharp-LICENSE.txt" >nul || goto failure
 if /i "%~1"=="--installer" (
     "%DOTNET_EXE%" build "%MSI_PROJECT%" -c Release --no-restore -o artifacts "-p:PublishDirectory=%LLANO_PUBLISH_DIR%" || goto failure

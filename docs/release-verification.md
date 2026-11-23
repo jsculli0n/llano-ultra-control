@@ -14,5 +14,5 @@ Use a clean Windows 11 x64 test machine or disposable VM. Keep a test copy of th
 
 - On the V12 Ultra revision 1601, confirm fan speed, lighting, USB power, and manual dial override. Disconnect and reconnect the data cable while cooling is enabled, then confirm the app recovers with fresh readings.
 - Connect a disposable keyboard through the cooler. Leave storage disconnected for this test. Verify keyboard input before and after restarting Windows.
-- With automatic power-off disabled, shut down Windows and verify that the app issues no power-off action. With the setting enabled and the app running, perform a normal shutdown, then a restart. Verify that the cooler goes off in both cases and that USB control and keyboard input return after powering it on.
+- With automatic cooler power disabled, shut down Windows and verify that the app sends no power command. With the setting and Windows sign-in startup enabled, test both shutdown and restart. Verify that the cooler turns off at shutdown, turns on at sign-in, and restores USB control and keyboard input. Turn the cooler off manually and verify that it stays off during the same session.
 - Record the machine, cooler revision and observations. Document any interruption or failed test before publishing the release.

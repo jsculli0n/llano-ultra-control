@@ -514,8 +514,8 @@
                         <TextBlock x:Name="CoolerPowerStatus" DockPanel.Dock="Right" Style="{StaticResource MutedText}" Foreground="{DynamicResource Accent}"/>
                         <TextBlock Text="Cooler power" Style="{StaticResource SectionTitle}"/>
                       </DockPanel>
-                      <CheckBox x:Name="PowerOffAtShutdown" Content="Turn off the cooler when Windows shuts down" Click="SaveShutdownPower"/>
-                      <TextBlock Text="Also applies when Windows restarts. Keep the app running and the cooler connected by USB." Style="{StaticResource MutedText}"/>
+                      <CheckBox x:Name="PowerOffAtShutdown" Content="Turn the cooler off at shutdown and on at sign-in" Click="SaveShutdownPower"/>
+                      <TextBlock Text="Keep the app running for shutdown. To power on automatically, enable Start in tray at sign-in under Settings → General." Style="{StaticResource MutedText}"/>
                       <TextBlock Text="Power changes can interrupt devices plugged into the cooler’s USB hub." Style="{StaticResource MutedText}" Margin="0,3,0,0"/>
                       <Button x:Name="PowerButton" Content="Turn cooler off" Click="ToggleCoolerPower" IsEnabled="False" HorizontalAlignment="Left" Margin="0,11,0,4"/>
                       <TextBlock x:Name="UsbHelp" Style="{StaticResource MutedText}" Margin="0,4,0,0"/>

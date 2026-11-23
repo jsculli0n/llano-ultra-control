@@ -171,6 +171,20 @@ controller.Update(At(6), Readings(6, 103, null, automatic: true), true);
 Equal(2800, controller.Update(At(7), Readings(7, 103, null, automatic: true), true).NewCommand,
     "continuous critical heat still commands maximum during sign-in");
 
+var startupPower = new SignInPowerOn(At(0));
+Equal(false, startupPower.TryAttempt(At(1), null), "sign-in waits for USB status");
+Equal(true, startupPower.TryAttempt(At(10), false), "sign-in can turn on a cooler that responds late");
+Equal(false, startupPower.TryAttempt(At(11), false), "sign-in backs off between power attempts");
+Equal(false, startupPower.TryAttempt(At(13), true), "an already powered cooler needs no command");
+Equal(false, startupPower.TryAttempt(At(25), false), "sign-in does not turn the cooler back on after a later manual shutoff");
+startupPower = new(At(0));
+Equal(true, startupPower.TryAttempt(At(0), false), "first USB power attempt");
+Equal(true, startupPower.TryAttempt(At(3), false), "USB power retry");
+Equal(true, startupPower.TryAttempt(At(6), false), "final USB power retry");
+Equal(false, startupPower.TryAttempt(At(9), false), "sign-in limits USB power retries");
+startupPower = new(At(0));
+Equal(false, startupPower.TryAttempt(At(45), false), "late connection after sign-in does not turn on the cooler unexpectedly");
+
 string testSettings = Path.Combine(Path.GetTempPath(), $"Llano-check-{Guid.NewGuid():N}.json");
 try
 {

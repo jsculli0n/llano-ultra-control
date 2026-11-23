@@ -111,6 +111,8 @@ public partial class MainWindow : Window
         message = startupNotice;
         LoadStartupState();
         PowerOffAtShutdown.IsChecked = settings.PowerOffAtShutdown;
+        if (trayLaunch && settings.PowerOffAtShutdown && !simulate)
+            signInPower = new(clock.Elapsed);
         ChangeFanMode(this, null!);
         if (trayLaunch && settings.ResumeAtSignIn && !simulate)
         {
@@ -196,6 +198,7 @@ public partial class MainWindow : Window
         tray.Text = decision.State == FanState.SensorFallback ? "Llano Ultra Control · Sensor unavailable" :
             controller.Enabled ? $"Llano Ultra Control · {rpm}" : "Llano Ultra Control";
         Footer.Text = message ?? "";
+        TryPowerOnAtSignIn(now);
         if (!scanning && !powerChanging && !closing) _ = ScanCoolerAsync(driveHardware ? decision.TargetRpm : null);
     }
 
@@ -258,6 +261,7 @@ public partial class MainWindow : Window
         if (!initialized) return;
         bool wasSimulating = simulate;
         simulate = DemoToggle.IsChecked == true;
+        if (simulate) signInPower = null;
         runningProfile = null;
         activeCoolingMode = null;
         if (wasSimulating != simulate) SpeedHistory.Clear();

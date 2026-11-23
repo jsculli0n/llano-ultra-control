@@ -1,5 +1,9 @@
 # Release notes
 
+## 1.0.5
+
+- The shutdown power option now turns the cooler back on when the app starts at Windows sign-in. It waits for USB to respond and leaves the cooler alone after the sign-in attempt finishes.
+
 ## 1.0.4
 
 - Sign-in cooling waits for five seconds of fresh temperature samples. Automatic presets confirm critical heat during startup before using the maximum RPM.

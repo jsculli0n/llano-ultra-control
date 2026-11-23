@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly FanController controller = new(CoolerLimits);
     private readonly CoolerDiscovery coolerDiscovery = new();
     private readonly object usbWriteGate = new();
+    private readonly bool runningAsAdministrator = StartupRegistration.IsElevated;
     private readonly SettingsStore store;
     private readonly SensorMonitor monitor;
     private readonly DispatcherTimer timer;
@@ -63,6 +64,10 @@ public partial class MainWindow : Window
     {
         this.store = store;
         InitializeComponent();
+        SensorElevateButton.Visibility = VisibilityFor(!runningAsAdministrator);
+        CpuAccessHelp.Text = runningAsAdministrator
+            ? "Administrator access is active. Some systems also need PawnIO or HWiNFO with Shared Memory Support."
+            : "Some laptops need administrator access to read CPU temperature. Windows will ask for approval.";
         try { settings = store.Load(); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
@@ -158,7 +163,7 @@ public partial class MainWindow : Window
         GpuSource.Text = gpu?.Hardware ?? "";
         CpuTile.ToolTip = cpu?.Caption;
         GpuTile.ToolTip = gpu?.Caption;
-        UpdateSensorSummaries(cpu, gpu);
+        UpdateSensorSummaries(cpu, gpu, live != SensorSnapshot.Empty);
         SensorSource.Text = simulate ? "Simulated CPU and GPU inputs" : live.Status;
         UpdateSensorSelectors();
         if (IsVisible && Navigation.SelectedItem == SensorsPage) UpdateReadingsGrid();
@@ -279,10 +284,9 @@ public partial class MainWindow : Window
             StartupMode.IsEnabled = ResumeAtSignIn.IsEnabled = StartupApply.IsEnabled = installed;
             StartupMode.SelectedIndex = installed ? (int)StartupRegistration.GetMode() : 0;
             ResumeAtSignIn.IsChecked = settings.ResumeAtSignIn;
-            bool elevated = StartupRegistration.IsElevated;
-            ElevateButton.IsEnabled = !elevated;
+            ElevateButton.IsEnabled = !runningAsAdministrator;
             StartupStatus.Text = !installed ? "Sign-in options are available with the MSI installation." :
-                elevated ? "Running with administrator access." : "Running with standard permissions.";
+                runningAsAdministrator ? "Running with administrator access." : "Running with standard permissions.";
         }
         catch (Exception error) { StartupStatus.Text = error.Message; }
     }
@@ -310,8 +314,14 @@ public partial class MainWindow : Window
 
     private void Elevate(object sender, RoutedEventArgs e)
     {
-        try { App.RestartElevated(simulate); }
-        catch (Win32Exception error) { StartupStatus.Text = error.Message; }
+        bool fromSensors = sender == SensorElevateButton;
+        try { App.RestartElevated(simulate, fromSensors); }
+        catch (Win32Exception error)
+        {
+            string notice = error.NativeErrorCode == 1223 ? "Administrator approval was cancelled." : error.Message;
+            if (fromSensors) ShowMessage(notice);
+            else StartupStatus.Text = notice;
+        }
     }
 
     private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)

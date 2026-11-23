@@ -29,7 +29,9 @@ public partial class MainWindow
         if (initialized && Navigation.SelectedItem == SensorsPage) UpdateReadingsGrid();
     }
 
-    private void UpdateSensorSummaries(SensorReading? cpu, SensorReading? gpu)
+    internal void ShowSensors() => Navigation.SelectedItem = SensorsPage;
+
+    private void UpdateSensorSummaries(SensorReading? cpu, SensorReading? gpu, bool scanCompleted)
     {
         SensorCpuValue.Text = cpu?.Display ?? "—";
         SensorGpuValue.Text = gpu?.Display ?? "—";
@@ -37,6 +39,7 @@ public partial class MainWindow
         SensorGpuCaption.Text = gpu?.Caption ?? "Temperature unavailable";
         SensorCpuCaption.ToolTip = cpu?.Caption;
         SensorGpuCaption.ToolTip = gpu?.Caption;
+        CpuAccessNotice.Visibility = VisibilityFor(!simulate && scanCompleted && cpu is null);
     }
 
     private void UpdateReadingsGrid()

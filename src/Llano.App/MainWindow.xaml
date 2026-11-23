@@ -223,7 +223,7 @@
       <TabItem x:Name="SensorsPage" Header="_Sensors">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <TextBlock Text="Sensors" Style="{StaticResource PageTitle}"/>
           <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,-10,14">
             <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBorder}" Margin="0,0,10,0" Padding="15,10">
@@ -245,7 +245,18 @@
               </DockPanel>
             </Border>
           </UniformGrid>
-          <DockPanel Grid.Row="2" Margin="0,0,0,11">
+          <Border x:Name="CpuAccessNotice" Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,11"
+                  Padding="15,10" BorderBrush="{DynamicResource AccentBorder}" Visibility="Collapsed">
+            <DockPanel>
+              <Button x:Name="SensorElevateButton" DockPanel.Dock="Right" Content="Restart as administrator"
+                      Click="Elevate" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <StackPanel>
+                <TextBlock Text="CPU temperature unavailable" FontWeight="SemiBold"/>
+                <TextBlock x:Name="CpuAccessHelp" Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <DockPanel Grid.Row="3" Margin="0,0,0,11">
             <ComboBox x:Name="ComponentFilter" DockPanel.Dock="Right" Width="168" Margin="12,0,0,0"
                       AutomationProperties.Name="Filter readings by component" SelectionChanged="ChangeFilter">
               <ComboBoxItem Content="All components"/><ComboBoxItem Content="CPU"/><ComboBoxItem Content="GPU"/>
@@ -259,7 +270,7 @@
               <Button x:Name="ClearSensorSearch" Content="Clear" Click="ClearSearch" Margin="6,0,0,0" Visibility="Collapsed"/>
             </StackPanel>
           </DockPanel>
-          <DataGrid x:Name="ReadingsGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" CanUserReorderColumns="False"
+          <DataGrid x:Name="ReadingsGrid" Grid.Row="4" AutoGenerateColumns="False" IsReadOnly="True" CanUserReorderColumns="False"
                     CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="31"
                     Background="{DynamicResource Panel}" RowBackground="{DynamicResource Panel}" AlternatingRowBackground="{DynamicResource Sidebar}"
                     BorderBrush="{DynamicResource Line}" Foreground="{DynamicResource Text}" EnableRowVirtualization="True">
@@ -270,7 +281,7 @@
               <DataGridTextColumn Header="Reading" Binding="{Binding Display}" Width="114"/>
             </DataGrid.Columns>
           </DataGrid>
-          <TextBlock x:Name="SensorCount" Grid.Row="4" Margin="0,9,0,0" Style="{StaticResource MutedText}"/>
+          <TextBlock x:Name="SensorCount" Grid.Row="5" Margin="0,9,0,0" Style="{StaticResource MutedText}"/>
         </Grid>
       </TabItem>
       <TabItem x:Name="FanPage" Header="Custom _curves">

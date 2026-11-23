@@ -1,0 +1,61 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI Id="LlanoSetup">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Segoe UI" Size="13" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Segoe UI" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <Property Id="ARPNOMODIFY" Value="1" />
+      <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Llano Ultra Control" />
+      <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="ExitDialog" />
+
+      <Dialog Id="SetupOptions" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="Banner" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="yes" Text="WixUI_Bmp_Banner" />
+        <Control Id="Heading" Type="Text" X="15" Y="13" Width="340" Height="24" Transparent="yes"
+                 Text="{\WixUI_Font_Bigger}Install Llano Ultra Control" />
+        <Control Id="Introduction" Type="Text" X="18" Y="60" Width="330" Height="34"
+                 Text="Setup adds Llano Ultra Control to the Start menu. Close the app from the notification area if you are updating an existing installation." />
+        <Control Id="DesktopShortcut" Type="CheckBox" X="18" Y="106" Width="330" Height="18" Property="ADDDESKTOPSHORTCUT"
+                 CheckBoxValue="1" Text="Create a &amp;desktop shortcut" />
+        <Control Id="Permissions" Type="Text" X="18" Y="147" Width="330" Height="46"
+                 Text="Setup asks for administrator approval. If CPU temperature is unavailable after opening the app, use Restart as administrator on the Sensors tab." />
+        <Control Id="ButtonDivider" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Install" Type="PushButton" X="220" Y="243" Width="72" Height="17" Default="yes" ElevationShield="yes" Text="&amp;Install">
+          <Publish Property="ADDDESKTOPSHORTCUT" Value="0" Order="1" Condition="NOT ADDDESKTOPSHORTCUT" />
+          <Publish Event="EndDialog" Value="Return" Order="2" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="ExitDialog" Control="Finish" Property="WixUnelevatedShellExecTarget" Value="[#AppExe]" Order="1"
+               Condition="ACTION = &quot;INSTALL&quot; AND NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT MsiSystemRebootPending" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="OpenLlano" Order="2"
+               Condition="ACTION = &quot;INSTALL&quot; AND NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT MsiSystemRebootPending" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="3" />
+
+      <InstallUISequence>
+        <Show Dialog="SetupOptions" After="LaunchConditions" Condition="NOT Installed AND NOT RESUME" />
+      </InstallUISequence>
+    </UI>
+    <UIRef Id="WixUI_Common" />
+    <CustomAction Id="OpenLlano" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixUnelevatedShellExec"
+                  Execute="immediate" Return="ignore" />
+  </Fragment>
+</Wix>

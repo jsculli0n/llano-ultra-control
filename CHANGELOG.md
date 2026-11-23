@@ -1,5 +1,11 @@
 # Release notes
 
+## 1.0.2
+
+- Added a setup screen with an optional desktop shortcut and an option to open the app when setup finishes.
+- Added the app icon to the Start menu shortcut and Windows Installed Apps.
+- Added a restart-as-administrator action to Sensors when CPU temperature is unavailable.
+
 ## 1.0.1
 
 - Fixed the MSI rejecting compatible Windows 11 x64 systems by reading the build number from the 64-bit Windows registry.

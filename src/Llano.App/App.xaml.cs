@@ -48,6 +48,7 @@ public partial class App : Application
         MainWindow = window;
         showListener = ThreadPool.RegisterWaitForSingleObject(showRequest,
             (_, _) => Dispatcher.InvokeAsync(window.ShowDashboard), null, Timeout.Infinite, executeOnlyOnce: false);
+        if (e.Args.Contains("--sensors")) window.ShowSensors();
         if (!e.Args.Contains("--tray")) window.Show();
     }
 
@@ -60,15 +61,19 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    public static void RestartElevated(bool demo)
+    public static void RestartElevated(bool demo, bool showSensors)
     {
         string path = Environment.ProcessPath!;
-        using var process = Process.Start(new ProcessStartInfo(path, demo ? "--restart --demo" : "--restart")
+        var start = new ProcessStartInfo(path)
         {
             UseShellExecute = true,
             Verb = "runas",
             WorkingDirectory = Path.GetDirectoryName(path)!
-        });
+        };
+        start.ArgumentList.Add("--restart");
+        if (demo) start.ArgumentList.Add("--demo");
+        if (showSensors) start.ArgumentList.Add("--sensors");
+        using var process = Process.Start(start);
         if (process is not null) Current.Shutdown();
     }
 }

@@ -80,9 +80,9 @@ internal sealed class SensorMonitor
                 var unique = readings.DistinctBy(reading => reading.Id)
                     .OrderBy(reading => reading.Component).ThenBy(reading => reading.Hardware)
                     .ThenBy(reading => reading.Name).ToArray();
-                string status = unique.Any(r => r is { Component: Component.Cpu, Unit: "°C", Value: not null })
-                    ? (shared ? "LibreHardwareMonitor and HWiNFO shared memory" : "LibreHardwareMonitor")
-                    : "CPU temperature unavailable. Enable HWiNFO shared memory, or use PawnIO and restart as administrator.";
+                string status = shared ? "LibreHardwareMonitor and HWiNFO shared memory" : "LibreHardwareMonitor";
+                if (!unique.Any(r => r is { Component: Component.Cpu, Unit: "°C", Value: not null }))
+                    status += " · CPU temperature unavailable. See Sensors for help.";
                 Volatile.Write(ref snapshot, new(unique, error is null ? status : $"LibreHardwareMonitor: {error}. {status}"));
             } while (await timer.WaitForNextTickAsync(stop).ConfigureAwait(false));
         }

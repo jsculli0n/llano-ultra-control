@@ -3,6 +3,15 @@
            UpgradeCode="2148F8B8-9775-483C-8D49-418EFB61ADE9" Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Llano Ultra Control is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <Icon Id="LlanoUltraControl.exe" SourceFile="$(var.PublishDir)\LlanoUltraControl.exe" />
+    <Property Id="ARPPRODUCTICON" Value="LlanoUltraControl.exe" />
+    <Property Id="ADDDESKTOPSHORTCUT" Secure="yes" />
+    <Property Id="LLANO_EXISTING_DESKTOP_SHORTCUT" Secure="yes">
+      <RegistrySearch Id="DesktopShortcutPreviouslySelected" Root="HKLM" Key="SOFTWARE\LlanoUltraControl\Installer"
+                      Name="DesktopShortcut" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="ADDDESKTOPSHORTCUT" Value="1" After="AppSearch" Sequence="both"
+                 Condition="NOT ADDDESKTOPSHORTCUT AND LLANO_EXISTING_DESKTOP_SHORTCUT = 1" />
     <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
       <RegistrySearch Id="WindowsBuildNumber" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
                       Name="CurrentBuildNumber" Type="raw" Bitness="always64" />
@@ -13,8 +22,15 @@
       <Directory Id="INSTALLFOLDER" Name="Llano Ultra Control">
         <Component Id="MainExecutable" Guid="*">
           <File Id="AppExe" Source="$(var.PublishDir)\LlanoUltraControl.exe" KeyPath="yes">
-            <Shortcut Id="StartMenuLink" Directory="ProgramMenuFolder" Name="Llano Ultra Control" WorkingDirectory="INSTALLFOLDER" Advertise="yes" />
+            <Shortcut Id="StartMenuLink" Directory="ProgramMenuFolder" Name="Llano Ultra Control"
+                      WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="LlanoUltraControl.exe" IconIndex="0" />
           </File>
+        </Component>
+        <Component Id="DesktopShortcut" Guid="*" Condition="ADDDESKTOPSHORTCUT = 1">
+          <Shortcut Id="DesktopLink" Directory="DesktopFolder" Name="Llano Ultra Control" Target="[INSTALLFOLDER]LlanoUltraControl.exe"
+                    WorkingDirectory="INSTALLFOLDER" Icon="LlanoUltraControl.exe" IconIndex="0" />
+          <RegistryValue Root="HKMU" Key="SOFTWARE\LlanoUltraControl\Installer" Name="DesktopShortcut"
+                         Type="string" Value="1" KeyPath="yes" />
         </Component>
         <Files Include="$(var.PublishDir)\**">
           <Exclude Files="$(var.PublishDir)\LlanoUltraControl.exe" />
@@ -22,6 +38,8 @@
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+    <UIRef Id="LlanoSetup" />
     <CustomAction Id="RemoveStartupTasks" FileRef="AppExe" ExeCommand="--remove-startup-tasks"
                   Execute="deferred" Impersonate="no" Return="ignore" />
     <InstallExecuteSequence>

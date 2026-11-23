@@ -1,8 +1,14 @@
 <Project Sdk="WixToolset.Sdk/6.0.2">
   <PropertyGroup>
     <InstallerPlatform>x64</InstallerPlatform>
+    <!-- The MSI is per-machine. Windows resolves DesktopFolder to Public Desktop and HKMU to HKLM. -->
+    <SuppressIces>ICE57</SuppressIces>
     <OutputName>LlanoUltraControl-$(Version)-win-x64</OutputName>
     <PublishDirectory Condition="'$(PublishDirectory)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish</PublishDirectory>
     <DefineConstants>$(DefineConstants);PublishDir=$(PublishDirectory);ProductVersion=$(Version)</DefineConstants>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
+  </ItemGroup>
 </Project>

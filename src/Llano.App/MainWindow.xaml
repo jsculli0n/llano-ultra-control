@@ -1,0 +1,503 @@
+<Window x:Class="Llano.App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:Llano.App"
+        Title="Llano Ultra Control" Width="1090" Height="780" MinWidth="880" MinHeight="600"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource WindowFill}" Foreground="{DynamicResource Text}"
+        FontFamily="Segoe UI" FontSize="14">
+  <Grid Background="{DynamicResource WindowFill}">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Border Background="{DynamicResource Sidebar}" Padding="19,13" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal">
+          <Border Width="35" Height="35" CornerRadius="8" Background="{DynamicResource Selected}" Margin="0,0,11,0">
+            <TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"
+                       HorizontalAlignment="Center" Foreground="{DynamicResource Accent}"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Llano Ultra Control" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock x:Name="DeviceState" Text="Checking for V12 Ultra…" Style="{StaticResource MutedText}"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <TextBlock x:Name="ConnectionMode" HorizontalAlignment="Right" Foreground="{DynamicResource Accent}" FontSize="13"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="Navigation" Grid.Row="1" Style="{StaticResource TopNavigation}" SelectionChanged="ChangePage">
+      <TabItem x:Name="OverviewPage" Header="_Cooling">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="0,0,5,3">
+            <TextBlock Text="Cooling" Style="{StaticResource PageTitle}"/>
+            <Grid Margin="0,0,0,12">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="1.3*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Card}" Margin="0,0,6,0" Padding="18,12" BorderBrush="{DynamicResource AccentBorder}" Background="{DynamicResource HeroFill}">
+                <DockPanel LastChildFill="True">
+                  <local:FanSpeedGauge x:Name="SpeedGauge" DockPanel.Dock="Right" Width="110" Height="110" Focusable="False"/>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="SpeedLabel" Text="Cooler speed setting" Style="{StaticResource MutedText}"/>
+                    <TextBlock x:Name="SpeedTile" Text="—" FontSize="36" FontWeight="SemiBold" TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                    <TextBlock x:Name="TargetTile" Style="{StaticResource MutedText}" Height="19"/>
+                    <TextBlock x:Name="CoolingMotionLabel" Text="Cooling paused" Foreground="{DynamicResource Accent}"
+                               FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+              <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="17,12">
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center" Margin="0,0,9,0">
+                    <TextBlock Text="CPU temperature" Style="{StaticResource MutedText}"/>
+                    <TextBlock x:Name="CpuTile" Text="—" Style="{StaticResource Metric}"/>
+                    <TextBlock x:Name="CpuSource" Style="{StaticResource MutedText}" Margin="0,3,0,0" Height="19"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                  <Border Grid.Column="1" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" Padding="14,0,0,0">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="GPU temperature" Style="{StaticResource MutedText}"/>
+                      <TextBlock x:Name="GpuTile" Text="—" Style="{StaticResource Metric}"/>
+                      <TextBlock x:Name="GpuSource" Style="{StaticResource MutedText}" Margin="0,3,0,0" Height="19"
+                                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+              </Border>
+            </Grid>
+            <Border Style="{StaticResource Card}" Padding="18,15" Margin="0,0,0,12">
+              <StackPanel>
+                <DockPanel>
+                  <TextBlock x:Name="AppliedModeLabel" DockPanel.Dock="Right" Foreground="{DynamicResource Accent}"
+                             FontSize="13" VerticalAlignment="Center" Margin="10,0,0,8"/>
+                  <TextBlock Text="Cooling mode" Style="{StaticResource SectionTitle}"/>
+                </DockPanel>
+                <Button x:Name="CoolingHelp" Click="OpenCoolingHelp" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,7,0,0"/>
+                <UniformGrid Columns="4" Margin="0,1,-8,0">
+                  <RadioButton x:Name="QuietChoice" Tag="Quiet" GroupName="Cooling" Checked="ChooseCoolingMode" Style="{StaticResource CoolingChoice}" AutomationProperties.Name="Quiet">
+                    <StackPanel><TextBlock Text="&#xE767;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Secondary}" FontSize="18" Margin="0,1,0,7"/>
+                      <TextBlock Text="Quiet" FontWeight="SemiBold"/><TextBlock Text="Low noise" Margin="0,3,0,0" Style="{StaticResource MutedText}"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="BalancedChoice" Tag="Balanced" GroupName="Cooling" Checked="ChooseCoolingMode" Style="{StaticResource CoolingChoice}" AutomationProperties.Name="Balanced">
+                    <StackPanel><TextBlock Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" FontSize="18" Margin="0,1,0,7"/>
+                      <TextBlock Text="Balanced" FontWeight="SemiBold"/><TextBlock Text="Everyday cooling" Margin="0,3,0,0" Style="{StaticResource MutedText}"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="BoostChoice" Tag="Boost" GroupName="Cooling" Checked="ChooseCoolingMode" Style="{StaticResource CoolingChoice}" AutomationProperties.Name="Boost">
+                    <StackPanel><TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" Foreground="#FFD297" FontSize="18" Margin="0,1,0,7"/>
+                      <TextBlock Text="Boost" FontWeight="SemiBold"/><TextBlock Text="More airflow" Margin="0,3,0,0" Style="{StaticResource MutedText}"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="ManualChoice" Tag="Manual" GroupName="Cooling" Checked="ChooseCoolingMode" Style="{StaticResource CoolingChoice}" AutomationProperties.Name="Manual">
+                    <StackPanel><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="#AFCBFB" FontSize="18" Margin="0,1,0,7"/>
+                      <TextBlock Text="Manual" FontWeight="SemiBold"/><TextBlock Text="Fixed speed" Margin="0,3,0,0" Style="{StaticResource MutedText}"/></StackPanel>
+                  </RadioButton>
+                </UniformGrid>
+                <StackPanel x:Name="ManualControls" Visibility="Collapsed" Margin="0,12,0,0">
+                  <TextBlock x:Name="ManualSpeedLabel" FontWeight="SemiBold"/>
+                  <Slider x:Name="ManualSpeed" Minimum="300" Maximum="2800" Value="1200" TickFrequency="100"
+                          IsSnapToTickEnabled="True" LargeChange="500" SmallChange="100" ValueChanged="ChangeManualSpeed"
+                          AutomationProperties.Name="Manual cooler speed in RPM"/>
+                </StackPanel>
+                <DockPanel Margin="0,12,0,0">
+                  <Button x:Name="StartControl" DockPanel.Dock="Right" Content="_Apply Balanced" Style="{StaticResource Primary}"
+                          Click="StartFan" Margin="12,0,0,0"/>
+                  <TextBlock x:Name="CoolingModeHint" Style="{StaticResource MutedText}" VerticalAlignment="Center"/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Padding="17,11" Margin="0,0,0,10">
+              <StackPanel>
+                <TextBlock Text="Fan speed history" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                <local:FanSpeedHistory x:Name="SpeedHistory" Height="88" AutomationProperties.Name="Cooler speed setting over the last 60 seconds"/>
+              </StackPanel>
+            </Border>
+            <Expander x:Name="SimulationInputs" Header="Simulation inputs" Visibility="Collapsed" Padding="10,0">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock x:Name="DemoCpuLabel"/>
+                <Slider x:Name="DemoCpu" Minimum="25" Maximum="105" Value="54" IsSnapToTickEnabled="True" TickFrequency="1" AutomationProperties.Name="Simulated CPU temperature"/>
+                <TextBlock x:Name="DemoGpuLabel"/>
+                <Slider x:Name="DemoGpu" Minimum="25" Maximum="105" Value="47" IsSnapToTickEnabled="True" TickFrequency="1" AutomationProperties.Name="Simulated GPU temperature"/>
+                <CheckBox x:Name="DemoSensorLoss" Content="Simulate CPU sensor loss"/>
+                <CheckBox x:Name="DemoGpuLoss" Content="Simulate GPU sensor loss"/>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="LightingPage" Header="_Lighting">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <Grid Margin="0,0,5,3">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="Lighting" Style="{StaticResource PageTitle}" Grid.ColumnSpan="3"/>
+            <StackPanel Grid.Row="1">
+              <Border Style="{StaticResource Card}" Padding="15" Margin="0,0,0,12">
+                <StackPanel>
+                  <TextBlock Text="Lighting presets" Style="{StaticResource SectionTitle}"/>
+                  <ListBox x:Name="LightingLooks" SelectionChanged="ChooseLightingPreset" Background="Transparent" BorderThickness="0"
+                           AutomationProperties.Name="Lighting presets" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                           ItemContainerStyle="{StaticResource LightingTile}">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel ToolTip="{Binding Name}">
+                          <Border Height="10" Background="{Binding Swatch}" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource Line}"/>
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+                          <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" FontSize="12" TextWrapping="NoWrap"/>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}" Padding="15">
+                <Expander x:Name="LightingCustomize" Header="Customize lighting">
+                  <StackPanel Margin="0,8,0,0">
+                    <CheckBox x:Name="LightingEnabled" Content="Lights on" Checked="ChangeLighting" Unchecked="ChangeLighting"/>
+                    <UniformGrid Columns="2">
+                      <StackPanel Margin="0,0,5,0">
+                        <TextBlock Text="Effect" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox x:Name="LightEffect" SelectionChanged="ChangeLighting" AutomationProperties.Name="Lighting effect">
+                          <ComboBoxItem Content="Solid"/><ComboBoxItem Content="Breathing"/><ComboBoxItem Content="Gradient"/><ComboBoxItem Content="Chase"/>
+                        </ComboBox>
+                      </StackPanel>
+                      <StackPanel Margin="5,0,0,0">
+                        <TextBlock Text="Effect speed" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox x:Name="LightSpeed" SelectionChanged="ChangeLighting" AutomationProperties.Name="Effect speed">
+                          <ComboBoxItem Content="Cooler default"/><ComboBoxItem Content="Level 1"/><ComboBoxItem Content="Level 2"/>
+                          <ComboBoxItem Content="Level 3"/><ComboBoxItem Content="Level 4"/>
+                        </ComboBox>
+                      </StackPanel>
+                    </UniformGrid>
+                    <StackPanel x:Name="ColorControls">
+                      <TextBlock Text="Cooler colour" Style="{StaticResource FieldLabel}"/>
+                      <ListBox x:Name="LightColor" SelectionChanged="ChangeLighting" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Cooler colour">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                          <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                              <Border Width="9" Height="9" Background="{Binding Swatch}" CornerRadius="5" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                              <TextBlock Text="{Binding Name}"/>
+                            </StackPanel>
+                          </DataTemplate>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
+                    </StackPanel>
+                    <Separator Margin="0,9,0,8" Background="{DynamicResource Line}"/>
+                    <TextBlock Text="Preset name" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                    <DockPanel LastChildFill="True">
+                      <Button DockPanel.Dock="Right" Content="Save preset" Click="SaveLighting" Margin="7,0,0,0"/>
+                      <TextBox x:Name="LightingPresetName" MaxLength="32" AutomationProperties.Name="Custom lighting preset name" ToolTip="Name for your lighting preset"/>
+                    </DockPanel>
+                    <Button x:Name="RemoveLightingButton" Content="Remove saved preset" HorizontalAlignment="Left" Click="RemoveLightingPreset"
+                            Visibility="Collapsed" Margin="0,8,0,0"/>
+                  </StackPanel>
+                </Expander>
+              </Border>
+            </StackPanel>
+            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBorder}" VerticalAlignment="Top">
+              <StackPanel>
+                <TextBlock x:Name="LightingLookTitle" Text="Lighting preview" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
+                <TextBlock x:Name="LightingLookDetail" Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
+                <Border CornerRadius="12" Padding="24,23" Background="{DynamicResource LightStage}">
+                  <Grid MinHeight="112">
+                    <Border x:Name="LightingPreview" CornerRadius="20" Background="{DynamicResource Input}"/>
+                    <Border Background="{DynamicResource Sidebar}" CornerRadius="13" Margin="6" BorderThickness="1" BorderBrush="{DynamicResource Line}"/>
+                    <Border Width="65" Height="65" CornerRadius="33" BorderThickness="1" BorderBrush="{DynamicResource AccentBorder}" Background="{DynamicResource Panel}">
+                      <TextBlock Text="&#xE8EC;" FontFamily="Segoe MDL2 Assets" FontSize="25" Foreground="{DynamicResource Muted}"
+                                 VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="BrightnessLabel" Text="Brightness" Style="{StaticResource FieldLabel}" Margin="0,14,0,3"/>
+                <Slider x:Name="Brightness" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                        ValueChanged="ChangeLighting" AutomationProperties.Name="Lighting brightness"/>
+                <TextBlock x:Name="LightingDeviceStatus" Style="{StaticResource MutedText}" Margin="0,10,0,9"/>
+                <WrapPanel>
+                  <Button x:Name="ApplyLighting" Content="_Apply to cooler" Style="{StaticResource Primary}" Click="ApplyRgb" IsEnabled="False"/>
+                  <Button x:Name="ReadLightingButton" Content="Load from cooler" Click="LoadDeviceLighting" IsEnabled="False"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="SensorsPage" Header="_Sensors">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Text="Sensors" Style="{StaticResource PageTitle}"/>
+          <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,-10,14">
+            <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBorder}" Margin="0,0,10,0" Padding="15,10">
+              <DockPanel>
+                <TextBlock x:Name="SensorCpuValue" DockPanel.Dock="Right" Style="{StaticResource Metric}" Foreground="{DynamicResource Accent}" Margin="10,0,0,0"/>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="CPU cooling input" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="SensorCpuCaption" Style="{StaticResource MutedText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" BorderBrush="#3B5D63" Margin="0,0,10,0" Padding="15,10">
+              <DockPanel>
+                <TextBlock x:Name="SensorGpuValue" DockPanel.Dock="Right" Style="{StaticResource Metric}" Foreground="{DynamicResource Secondary}" Margin="10,0,0,0"/>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="GPU cooling input" FontWeight="SemiBold"/>
+                  <TextBlock x:Name="SensorGpuCaption" Style="{StaticResource MutedText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+          </UniformGrid>
+          <DockPanel Grid.Row="2" Margin="0,0,0,11">
+            <ComboBox x:Name="ComponentFilter" DockPanel.Dock="Right" Width="168" Margin="12,0,0,0"
+                      AutomationProperties.Name="Filter readings by component" SelectionChanged="ChangeFilter">
+              <ComboBoxItem Content="All components"/><ComboBoxItem Content="CPU"/><ComboBoxItem Content="GPU"/>
+              <ComboBoxItem Content="Memory"/><ComboBoxItem Content="Motherboard"/><ComboBoxItem Content="Storage"/>
+            </ComboBox>
+            <CheckBox x:Name="TemperaturesOnly" DockPanel.Dock="Right" Content="Temperatures only" IsChecked="True"
+                      Checked="ChangeReadingType" Unchecked="ChangeReadingType" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <StackPanel Orientation="Horizontal">
+              <Label Content="_Search" Target="{Binding ElementName=SensorSearch}" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Padding="0,0,9,0"/>
+              <TextBox x:Name="SensorSearch" TextChanged="ChangeSensorSearch" MinWidth="190" VerticalContentAlignment="Center" AutomationProperties.Name="Search sensors"/>
+              <Button x:Name="ClearSensorSearch" Content="Clear" Click="ClearSearch" Margin="6,0,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+          </DockPanel>
+          <DataGrid x:Name="ReadingsGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" CanUserReorderColumns="False"
+                    CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="31"
+                    Background="{DynamicResource Panel}" RowBackground="{DynamicResource Panel}" AlternatingRowBackground="{DynamicResource Sidebar}"
+                    BorderBrush="{DynamicResource Line}" Foreground="{DynamicResource Text}" EnableRowVirtualization="True">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Component" Binding="{Binding Component}" Width="104"/>
+              <DataGridTextColumn Header="Hardware" Binding="{Binding Hardware}" Width="2*"/>
+              <DataGridTextColumn Header="Sensor" Binding="{Binding Name}" Width="2*"/>
+              <DataGridTextColumn Header="Reading" Binding="{Binding Display}" Width="114"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock x:Name="SensorCount" Grid.Row="4" Margin="0,9,0,0" Style="{StaticResource MutedText}"/>
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="FanPage" Header="Custom _curves">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <DockPanel Margin="0,0,0,14">
+            <ComboBox x:Name="ProfilesList" DockPanel.Dock="Right" Width="215" Margin="8,0,0,0"
+                      AutomationProperties.Name="Saved profile" SelectionChanged="SelectProfile"/>
+            <TextBlock Text="Saved profile" DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource MutedText}"/>
+            <TextBlock Text="Custom curves" Style="{StaticResource PageTitle}" Margin="0"/>
+          </DockPanel>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="0,0,6,4">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="1.32*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Card}" VerticalAlignment="Top" BorderBrush="{DynamicResource AccentBorder}" Padding="16,13">
+                <StackPanel>
+                  <TextBlock x:Name="CurveTitle" Text="Fan curve" Style="{StaticResource SectionTitle}"/>
+                  <TextBlock x:Name="FixedHint" Text="Fixed speed holds the RPM you enter in Profile settings." Style="{StaticResource MutedText}"/>
+                  <StackPanel x:Name="GraphHost">
+                    <Border Background="{DynamicResource Sidebar}" CornerRadius="8" Padding="9,6" Margin="0,0,0,7">
+                      <local:CurveChart x:Name="CurvePlot" Height="158" AutomationProperties.Name="Fan curve chart"/>
+                    </Border>
+                    <DockPanel Margin="0,0,0,7">
+                      <TextBlock x:Name="CurveEstimate" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" DockPanel.Dock="Right" Margin="9,0,0,0"/>
+                      <TextBlock Text="Test temperature" Style="{StaticResource MutedText}"/>
+                    </DockPanel>
+                    <Slider x:Name="CurvePreviewTemperature" Minimum="0" Maximum="120" Value="65" TickFrequency="1"
+                            IsSnapToTickEnabled="True" ValueChanged="ChangePreviewTemperature" Margin="0,0,0,9"
+                            AutomationProperties.Name="Curve test temperature in Celsius"/>
+                  </StackPanel>
+                  <StackPanel x:Name="CurveEditors">
+                    <local:CurveEditor x:Name="SharedCurve" PointsChanged="ChangeCurve"/>
+                    <StackPanel x:Name="SeparateCurveEditors">
+                      <ComboBox x:Name="CurveSensor" AutomationProperties.Name="Select curve to edit" SelectedIndex="0" SelectionChanged="ChangeCurveEditor">
+                        <ComboBoxItem Content="CPU curve"/><ComboBoxItem Content="GPU curve"/>
+                      </ComboBox>
+                      <Grid Margin="0,8,0,0">
+                        <local:CurveEditor x:Name="CpuCurve" PointsChanged="ChangeCurve"/>
+                        <local:CurveEditor x:Name="GpuCurve" PointsChanged="ChangeCurve" Visibility="Collapsed"/>
+                      </Grid>
+                    </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top" Padding="16,13">
+                <StackPanel>
+                  <TextBlock Text="Profile settings" Style="{StaticResource SectionTitle}"/>
+                  <TextBlock Text="Name" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                  <TextBox x:Name="ProfileName" MaxLength="64" TextChanged="ChangeProfileDraft" AutomationProperties.Name="Profile name"/>
+                  <TextBlock Text="Fan mode" Style="{StaticResource FieldLabel}"/>
+                  <ComboBox x:Name="FanModeList" AutomationProperties.Name="Fan mode" SelectionChanged="ChangeFanMode">
+                    <ComboBoxItem Content="Fixed RPM"/><ComboBoxItem Content="Shared curve"/><ComboBoxItem Content="Separate CPU and GPU curves"/>
+                  </ComboBox>
+                  <StackPanel x:Name="FixedEditor">
+                    <TextBlock Text="Fixed RPM" Style="{StaticResource FieldLabel}"/>
+                    <TextBox x:Name="FixedRpm" TextChanged="ChangeProfileDraft" AutomationProperties.Name="Fixed RPM"/>
+                  </StackPanel>
+                  <WrapPanel Margin="0,13,0,3">
+                    <Button x:Name="CustomStart" Content="_Apply profile" Style="{StaticResource Primary}" Click="StartFan"/>
+                    <Button Content="_Save profile" Click="SaveProfile"/>
+                  </WrapPanel>
+                  <WrapPanel>
+                    <Button Content="Save as _new" Click="SaveNewProfile"/>
+                    <Button x:Name="RemoveProfile" Content="Remove" Click="DeleteProfile"/>
+                  </WrapPanel>
+                  <Separator Margin="0,6,0,7" Background="{DynamicResource Line}"/>
+                  <Expander Header="Sensor inputs and RPM limits">
+                    <StackPanel Margin="0,6,0,0">
+                      <UniformGrid Columns="2">
+                        <StackPanel Margin="0,0,6,0"><TextBlock Text="Minimum RPM" Style="{StaticResource FieldLabel}"/>
+                          <TextBox x:Name="MinimumRpm" TextChanged="ChangePreviewTemperature" AutomationProperties.Name="Minimum RPM"/></StackPanel>
+                        <StackPanel Margin="6,0,0,0"><TextBlock Text="Maximum RPM" Style="{StaticResource FieldLabel}"/>
+                          <TextBox x:Name="MaximumRpm" TextChanged="ChangePreviewTemperature" AutomationProperties.Name="Maximum RPM"/></StackPanel>
+                      </UniformGrid>
+                      <StackPanel x:Name="SharedEditor">
+                        <TextBlock Text="Temperature sensors" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="The hottest selected sensor drives the curve." Style="{StaticResource MutedText}" Margin="0,0,0,7"/>
+                        <ListBox x:Name="SharedSensors" SelectionMode="Multiple" MaxHeight="152" MinHeight="62" DisplayMemberPath="Caption" SelectionChanged="ChangeProfileDraft"
+                                 AutomationProperties.Name="Temperature sensors for the shared curve"/>
+                      </StackPanel>
+                      <StackPanel x:Name="SeparateEditor">
+                        <TextBlock Text="CPU temperature sensor" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox x:Name="CpuSensor" DisplayMemberPath="Caption" SelectedValuePath="Id" SelectionChanged="ChangeProfileDraft" AutomationProperties.Name="CPU temperature sensor"/>
+                        <TextBlock Text="GPU temperature sensor" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox x:Name="GpuSensor" DisplayMemberPath="Caption" SelectedValuePath="Id" SelectionChanged="ChangeProfileDraft" AutomationProperties.Name="GPU temperature sensor"/>
+                      </StackPanel>
+                    </StackPanel>
+                  </Expander>
+                  <Expander Header="Start from a preset" Margin="0,4,0,0">
+                    <WrapPanel Margin="0,8,0,0">
+                      <Button Content="Quiet" Tag="Quiet" Click="LoadCurvePreset"/>
+                      <Button Content="Balanced" Tag="Balanced" Click="LoadCurvePreset"/>
+                      <Button Content="Boost" Tag="Boost" Click="LoadCurvePreset"/>
+                    </WrapPanel>
+                  </Expander>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="SettingsPage" Header="Se_ttings">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <TextBlock Text="Settings" Style="{StaticResource PageTitle}"/>
+          <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="174"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}" Padding="7" VerticalAlignment="Top">
+              <ListBox x:Name="SettingsSections" SelectedIndex="0" SelectionChanged="ChangeSettingsSection"
+                       Background="Transparent" BorderThickness="0" AutomationProperties.Name="Settings section">
+                <ListBoxItem Content="General"/>
+                <ListBoxItem Content="Cooler &amp; USB"/>
+                <ListBoxItem Content="Diagnostics"/>
+                <ListBoxItem Content="About"/>
+              </ListBox>
+            </Border>
+            <ScrollViewer x:Name="SettingsScroll" Grid.Column="2" VerticalScrollBarVisibility="Auto">
+              <Grid Margin="0,0,5,3">
+                <StackPanel x:Name="GeneralSettings">
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                      <TextBlock Text="Appearance" Style="{StaticResource SectionTitle}"/>
+                      <ComboBox x:Name="ThemePicker" Width="205" HorizontalAlignment="Left" SelectionChanged="ChangeTheme"
+                                AutomationProperties.Name="App theme">
+                        <ComboBoxItem Content="Ember Red"/><ComboBoxItem Content="Violet"/><ComboBoxItem Content="Ice Blue"/><ComboBoxItem Content="Graphite"/>
+                      </ComboBox>
+                      <TextBlock x:Name="ThemeStatus" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                      <TextBlock Text="Windows startup" Style="{StaticResource SectionTitle}"/>
+                      <ComboBox x:Name="StartupMode" Width="328" HorizontalAlignment="Left" AutomationProperties.Name="Launch at sign-in">
+                        <ComboBoxItem Content="Off"/><ComboBoxItem Content="Start in tray at sign-in"/><ComboBoxItem Content="Start in tray with administrator access"/>
+                      </ComboBox>
+                      <CheckBox x:Name="ResumeAtSignIn" Content="Resume cooling at sign-in"/>
+                      <WrapPanel Margin="0,9,0,0">
+                        <Button x:Name="StartupApply" Content="Apply startup settings" Click="SaveStartup"/>
+                        <Button x:Name="ElevateButton" Content="Restart as administrator" Click="Elevate"/>
+                      </WrapPanel>
+                      <TextBlock x:Name="StartupStatus" Style="{StaticResource MutedText}"/>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="Notification area" Style="{StaticResource SectionTitle}"/>
+                      <CheckBox x:Name="CloseToTray" Click="SaveTrayPreference" Content="Keep running when I close the window"/>
+                      <TextBlock Text="Use the tray icon to reopen the app, pause cooling, or exit." Style="{StaticResource MutedText}"/>
+                      <Button Content="Exit app" Click="ExitClick" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="UsbSettings" Visibility="Collapsed">
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderBrush="{DynamicResource AccentBorder}">
+                    <StackPanel>
+                      <DockPanel>
+                        <TextBlock x:Name="CoolerPowerStatus" DockPanel.Dock="Right" Style="{StaticResource MutedText}" Foreground="{DynamicResource Accent}"/>
+                        <TextBlock Text="Cooler power" Style="{StaticResource SectionTitle}"/>
+                      </DockPanel>
+                      <CheckBox x:Name="PowerOffAtShutdown" Content="Turn off the cooler when Windows shuts down" Click="SaveShutdownPower"/>
+                      <TextBlock Text="Also applies when Windows restarts. Keep the app running and the cooler connected by USB." Style="{StaticResource MutedText}"/>
+                      <TextBlock Text="Power changes can interrupt devices plugged into the cooler’s USB hub." Style="{StaticResource MutedText}" Margin="0,3,0,0"/>
+                      <Button x:Name="PowerButton" Content="Turn cooler off" Click="ToggleCoolerPower" IsEnabled="False" HorizontalAlignment="Left" Margin="0,11,0,4"/>
+                      <TextBlock x:Name="UsbHelp" Style="{StaticResource MutedText}" Margin="0,4,0,0"/>
+                      <TextBlock x:Name="PowerMessage" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="DiagnosticSettings" Visibility="Collapsed">
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                      <TextBlock Text="Testing and diagnostics" Style="{StaticResource SectionTitle}"/>
+                      <CheckBox x:Name="DemoToggle" Content="Simulation mode" Checked="ChangeSimulation" Unchecked="ChangeSimulation"/>
+                      <TextBlock Text="Use simulated temperatures to test a fan curve without sending commands to the cooler." Style="{StaticResource MutedText}" Margin="0,0,0,10"/>
+                      <TextBlock x:Name="SensorSource" Style="{StaticResource MutedText}" Margin="0,4,0,6"/>
+                      <TextBlock x:Name="HidDetails" Text="Checking USB metadata…" Style="{StaticResource MutedText}"/>
+                      <WrapPanel Margin="0,11,0,0">
+                        <Button x:Name="CaptureButton" Content="Listen for HID input" Click="CaptureInput" IsEnabled="False"/>
+                        <Button Content="Copy diagnostics" Click="CopyDiagnostics"/>
+                      </WrapPanel>
+                      <TextBlock Text="Diagnostics are copied to your clipboard for you to review and share." Style="{StaticResource MutedText}"/>
+                      <TextBox x:Name="CaptureLog" IsReadOnly="True" TextWrapping="Wrap" Height="88" VerticalScrollBarVisibility="Auto"
+                               AutomationProperties.Name="HID diagnostics" FontFamily="Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="AboutSettings" Visibility="Collapsed">
+                  <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBorder}" Background="{DynamicResource HeroFill}" Margin="0,0,0,12">
+                    <StackPanel>
+                      <TextBlock Text="Llano Ultra Control" Style="{StaticResource SectionTitle}"/>
+                      <TextBlock x:Name="AboutVersion" Foreground="{DynamicResource Accent}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                      <TextBlock Text="Independent open-source project. Unaffiliated with llano." Style="{StaticResource MutedText}"/>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="Compatibility and use" Style="{StaticResource SectionTitle}"/>
+                      <TextBlock Text="Windows 11 x64. USB control verified with the V12 Ultra, revision 1601 (374A:B101). Laptop temperature sensors vary by model and driver." Margin="0,0,0,8"/>
+                      <TextBlock Text="Controls the external cooling pad. Your laptop manages its own internal fans and thermal protection." Margin="0,0,0,8"/>
+                      <TextBlock Text="The shutdown option needs the app running and the cooler reachable over USB. Power changes may interrupt devices connected to the cooler’s USB hub." Margin="0,0,0,8"/>
+                      <TextBlock Text="Distributed under the MIT licence, as is and without warranty." Margin="0,0,0,10"/>
+                      <WrapPanel>
+                        <Button x:Name="OpenGuide" Content="Quick start and troubleshooting" Tag="README.md" Click="OpenReleaseDocument"/>
+                        <Button x:Name="OpenLicence" Content="MIT licence" Tag="LICENSE" Click="OpenReleaseDocument"/>
+                        <Button x:Name="OpenNotices" Content="Third-party notices" Tag="THIRD-PARTY-NOTICES.md" Click="OpenReleaseDocument"/>
+                      </WrapPanel>
+                      <TextBlock x:Name="AboutStatus" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Grid>
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="2" Background="{DynamicResource Sidebar}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Line}" Padding="19,9" MinHeight="54">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
+          <TextBlock x:Name="FanStatus" Text="Fan control paused" FontWeight="SemiBold"/>
+          <TextBlock x:Name="Footer" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite" Margin="0,3,0,0"/>
+        </StackPanel>
+        <Button x:Name="PauseButton" Grid.Column="1" VerticalAlignment="Center" Content="_Pause cooling" Click="PauseFan"
+                Visibility="Collapsed" Margin="0"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

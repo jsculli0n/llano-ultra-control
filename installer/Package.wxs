@@ -1,0 +1,27 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Llano Ultra Control" Manufacturer="Llano Ultra Control contributors" Version="$(var.ProductVersion)"
+           UpgradeCode="2148F8B8-9775-483C-8D49-418EFB61ADE9" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Llano Ultra Control is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Launch Condition="Installed OR (VersionNT64 AND (WindowsBuild &gt;= 22000))"
+            Message="Llano Ultra Control requires Windows 11 x64." />
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Llano Ultra Control">
+        <Component Id="MainExecutable" Guid="*">
+          <File Id="AppExe" Source="$(var.PublishDir)\LlanoUltraControl.exe" KeyPath="yes">
+            <Shortcut Id="StartMenuLink" Directory="ProgramMenuFolder" Name="Llano Ultra Control" WorkingDirectory="INSTALLFOLDER" Advertise="yes" />
+          </File>
+        </Component>
+        <Files Include="$(var.PublishDir)\**">
+          <Exclude Files="$(var.PublishDir)\LlanoUltraControl.exe" />
+        </Files>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <CustomAction Id="RemoveStartupTasks" FileRef="AppExe" ExeCommand="--remove-startup-tasks"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RemoveStartupTasks" Before="RemoveFiles" Condition="REMOVE = &quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

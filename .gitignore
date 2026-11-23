@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+artifacts/
+.dotnet*/
+.dotnet*.zip
+.mythcool*
+.nuget/
+*.pcap
+*.pcapng
+*.etl
+*.user

@@ -1,0 +1,8 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <OutputName>LlanoUltraControl-$(Version)-win-x64</OutputName>
+    <PublishDirectory Condition="'$(PublishDirectory)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish</PublishDirectory>
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDirectory);ProductVersion=$(Version)</DefineConstants>
+  </PropertyGroup>
+</Project>

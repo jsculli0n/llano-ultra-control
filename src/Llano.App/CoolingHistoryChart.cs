@@ -59,8 +59,7 @@ public sealed class CoolingHistoryChart : FrameworkElement
         }
         var area = Plot;
         var time = end - range + range * ((cursor.X - area.Left) / area.Width);
-        var sample = samples.MinBy(point => Math.Abs((point.At - time).TotalSeconds));
-        if ((sample.At - time).Duration() > Gap)
+        if (CoolingHistory.Nearest(samples, time) is not { } sample || (sample.At - time).Duration() > Gap)
         {
             readingTip.Content = $"{time.LocalDateTime:g} · No data";
             return;

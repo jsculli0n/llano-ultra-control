@@ -68,10 +68,14 @@ public partial class MainWindow
     }
 
     private bool IsFresh(SensorReading reading) =>
-        readingTime - reading.SampledAt <= TimeSpan.FromSeconds(5) && reading.SampledAt >= sensorValidAfter;
+        reading.SampledAt <= readingTime && readingTime - reading.SampledAt <= TimeSpan.FromSeconds(5) &&
+        reading.SampledAt >= sensorValidAfter;
+
+    private bool TemperatureIsFresh(SensorReading reading) =>
+        reading.Value is >= -40 and <= 150 && IsFresh(reading);
 
     private SensorReading? PreferredTemperature(Component component) =>
-        temperatureSensors.Where(r => r.Component == component && r.Value.HasValue && IsFresh(r))
+        temperatureSensors.Where(r => r.Component == component && TemperatureIsFresh(r))
             .Select(reading => (Reading: reading, Rank: TemperatureRank(reading)))
             .Where(candidate => candidate.Rank < int.MaxValue)
             .OrderBy(candidate => component == Component.Gpu ? GraphicsPriority(candidate.Reading) : 0)

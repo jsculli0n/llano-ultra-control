@@ -5,11 +5,18 @@
     <SuppressIces>ICE57</SuppressIces>
     <OutputName>LlanoUltraControl-$(Version)-win-x64</OutputName>
     <PublishDirectory Condition="'$(PublishDirectory)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish</PublishDirectory>
-    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDirectory);ProductVersion=$(Version)</DefineConstants>
+    <LauncherDirectory>$(MSBuildThisFileDirectory)obj\launcher\$(Configuration)\$(Version)</LauncherDirectory>
+    <LauncherExe>$(LauncherDirectory)\LlanoUltraControl.exe</LauncherExe>
+    <DefineConstants>$(DefineConstants);PublishDir=$(PublishDirectory);ProductVersion=$(Version);LauncherExe=$(LauncherExe)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="RemovePreferences/RemovePreferences.csproj" />
     <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
     <PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
   </ItemGroup>
+  <Target Name="BuildLauncher" BeforeTargets="CoreCompile"
+          Inputs="Launcher\build.ps1;Launcher\Launcher.c;Launcher\Launcher.rc;..\src\Llano.App\app.ico;..\src\Llano.App\app.manifest;..\tests\Launcher\Probe.c"
+          Outputs="$(LauncherExe)">
+    <Exec Command="&quot;$(SystemRoot)\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy RemoteSigned -File &quot;$(MSBuildProjectDirectory)\Launcher\build.ps1&quot; -OutputDirectory &quot;$(LauncherDirectory)&quot; -Version &quot;$(Version)&quot;" />
+  </Target>
 </Project>

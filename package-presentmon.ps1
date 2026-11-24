@@ -12,7 +12,7 @@ foreach ($asset in $assets) {
     if ((Test-Path -LiteralPath $target) -and (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -eq $asset.Hash) { continue }
     $temporary = Join-Path $destinationPath ("presentmon-" + [Guid]::NewGuid().ToString('N') + '.tmp')
     try {
-        Invoke-WebRequest -Uri $asset.Url -OutFile $temporary -UseBasicParsing
+        Invoke-WebRequest -Uri $asset.Url -OutFile $temporary -UseBasicParsing -TimeoutSec 60
         if ((Get-FileHash -LiteralPath $temporary -Algorithm SHA256).Hash -ne $asset.Hash) { throw "PresentMon verification failed for $($asset.Name)." }
         Move-Item -LiteralPath $temporary -Destination $target -Force
     }

@@ -80,7 +80,8 @@ public partial class MainWindow
         }
         try
         {
-            using var editor = Process.Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path } });
+            string notepad = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+            using var editor = Process.Start(new ProcessStartInfo(notepad) { ArgumentList = { path } });
             AboutStatus.Text = "";
         }
         catch (Win32Exception error) { AboutStatus.Text = "Couldn’t open the document. " + error.Message; }

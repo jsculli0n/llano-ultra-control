@@ -6,5 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Llano.Core\Llano.Core.csproj" />
     <Compile Include="..\..\src\Llano.App\HidCooler.cs" Link="HidCooler.cs" />
+    <Compile Include="..\..\src\Llano.App\CoolingHistoryFile.cs" Link="CoolingHistoryFile.cs" />
+    <Compile Include="..\..\src\Llano.App\PresentMonCsv.cs" Link="PresentMonCsv.cs" />
   </ItemGroup>
 </Project>

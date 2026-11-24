@@ -7,6 +7,8 @@ internal static class StartupRegistration
 {
     private const string TaskPrefix = "LlanoUltraControl-";
     private const string TelemetryPrefix = TaskPrefix + "Telemetry-";
+    internal const string LauncherName = "LlanoUltraControl.exe";
+    internal const string AppHostName = "LlanoUltraControl.App.exe";
     internal const string TelemetryArgument = "--telemetry-helper";
     private const int TaskNotFound = unchecked((int)0x80070002);
     internal static string Sid
@@ -18,10 +20,14 @@ internal static class StartupRegistration
         }
     }
 
-    public static string InstalledPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Llano Ultra Control", "LlanoUltraControl.exe");
+    private static readonly string InstallDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Llano Ultra Control");
 
-    public static bool IsInstalled => string.Equals(Environment.ProcessPath, InstalledPath, StringComparison.OrdinalIgnoreCase);
+    public static string InstalledPath { get; } = Path.Combine(InstallDirectory, LauncherName);
+    public static string InstalledAppPath { get; } = Path.Combine(InstallDirectory, AppHostName);
+
+    public static bool IsInstalled { get; } =
+        string.Equals(Environment.ProcessPath, InstalledAppPath, StringComparison.OrdinalIgnoreCase) && File.Exists(InstalledPath);
     public static bool IsElevated
     {
         get
@@ -69,16 +75,19 @@ internal static class StartupRegistration
         if (!IsInstalled) return false;
         try
         {
-            dynamic task = Root().GetTask(TelemetryPrefix + Sid);
-            return (bool)task.Enabled && IsOwnTask(task, TelemetryArgument);
+            string sid = Sid;
+            dynamic task = Root().GetTask(TelemetryPrefix + sid);
+            return (bool)task.Enabled && IsTelemetryTask(task, sid);
         }
         catch (Exception error) when (error.HResult == TaskNotFound) { return false; }
     }
 
     public static void StartTelemetry()
     {
-        dynamic task = Root().GetTask(TelemetryPrefix + Sid);
-        if (!(bool)task.Enabled || !IsOwnTask(task, TelemetryArgument))
+        if (!IsInstalled) throw new InvalidOperationException("Install the MSI to use the telemetry helper.");
+        string sid = Sid;
+        dynamic task = Root().GetTask(TelemetryPrefix + sid);
+        if (!(bool)task.Enabled || !IsTelemetryTask(task, sid))
             throw new InvalidOperationException("The telemetry task is unavailable.");
         using var process = Process.GetCurrentProcess();
         task.RunEx(null, 4, process.SessionId, null);
@@ -110,9 +119,9 @@ internal static class StartupRegistration
     private static void ApplyTelemetry(bool enabled)
     {
         var startup = GetStartup();
-        if (startup.Elevated) ApplyStartup(startup.Enabled);
         if (enabled) RegisterTelemetry();
-        else
+        if (startup.Elevated) ApplyStartup(startup.Enabled);
+        if (!enabled)
         {
             try { Root().DeleteTask(TelemetryPrefix + Sid, 0); }
             catch (Exception error) when (error.HResult == TaskNotFound) { }
@@ -176,6 +185,20 @@ internal static class StartupRegistration
         return actions.Count == 1 && actions[1].Type == 0 &&
             string.Equals((string)actions[1].Path, InstalledPath, StringComparison.OrdinalIgnoreCase) &&
             string.Equals((string)actions[1].Arguments, argument, StringComparison.Ordinal);
+    }
+
+    private static bool IsTelemetryTask(dynamic task, string sid)
+    {
+        if (!IsOwnTask(task, TelemetryArgument)) return false;
+        dynamic definition = task.Definition;
+        dynamic principal = definition.Principal;
+        string? user = principal.UserId;
+        if ((int)definition.Triggers.Count != 0 || (int)principal.LogonType != 3 || (int)principal.RunLevel != 1 ||
+            !string.Equals((string)definition.Actions[1].WorkingDirectory, Path.GetDirectoryName(InstalledPath), StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrEmpty(user)) return false;
+        if (user.Equals(sid, StringComparison.OrdinalIgnoreCase)) return true;
+        try { return new NTAccount(user).Translate(typeof(SecurityIdentifier)).Value == sid; }
+        catch (IdentityNotMappedException) { return false; }
     }
 
     private static void ApplyStartup(bool enabled)

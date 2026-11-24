@@ -25,7 +25,7 @@
         <Control Id="DesktopShortcut" Type="CheckBox" X="18" Y="106" Width="330" Height="18" Property="ADDDESKTOPSHORTCUT"
                  CheckBoxValue="1" Text="Create a &amp;desktop shortcut" />
         <Control Id="Permissions" Type="Text" X="18" Y="147" Width="330" Height="46"
-                 Text="Setup asks for administrator approval. If CPU temperature is unavailable after opening the app, use Restart as administrator on the Sensors tab." />
+                 Text="Setup asks for administrator approval. To access more CPU readings and FPS, open Settings in the app and select Enable sensor and FPS access." />
         <Control Id="ButtonDivider" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Install" Type="PushButton" X="220" Y="243" Width="72" Height="17" Default="yes" ElevationShield="yes" Text="&amp;Install">
           <Publish Property="ADDDESKTOPSHORTCUT" Value="0" Order="1" Condition="NOT ADDDESKTOPSHORTCUT" />

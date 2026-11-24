@@ -9,6 +9,8 @@
     <AssemblyName>LlanoUltraControl</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- The installed app is also started with elevation for telemetry and installer maintenance. -->
+    <StartupHookSupport>false</StartupHookSupport>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Llano.Core\Llano.Core.csproj" />

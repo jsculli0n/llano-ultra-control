@@ -25,33 +25,64 @@ public sealed record LightingPreset(string Name, Lighting Lighting);
 
 public sealed class SettingsStore(string path, SpeedLimits limits)
 {
+    private const long MaximumBytes = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
+    private readonly string fullPath = Path.GetFullPath(path);
+    private bool preserveOriginal;
 
     public AppSettings Load()
     {
-        if (!File.Exists(path)) return new();
-        using var stream = File.OpenRead(path);
-        var settings = JsonSerializer.Deserialize<AppSettings>(stream, Json) ?? throw new InvalidDataException("Settings are empty.");
-        Validate(settings);
-        return settings;
+        try
+        {
+            using var stream = File.OpenRead(fullPath);
+            CheckSize(stream.Length);
+            var settings = JsonSerializer.Deserialize<AppSettings>(stream, Json) ?? throw new InvalidDataException("Settings are empty.");
+            Validate(settings);
+            preserveOriginal = false;
+            return settings;
+        }
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
+        {
+            preserveOriginal = false;
+            return new();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
+        {
+            preserveOriginal = true;
+            throw;
+        }
     }
 
     public void Save(AppSettings settings)
     {
         Validate(settings);
-        string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        string directory = Path.GetDirectoryName(fullPath)!;
         Directory.CreateDirectory(directory);
-        string temporary = Path.Combine(directory, $"{Guid.NewGuid():N}.tmp");
+        var writeId = Guid.NewGuid();
+        string temporary = Path.Combine(directory, $"{writeId:N}.tmp");
         try
         {
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 JsonSerializer.Serialize(stream, settings, Json);
+                CheckSize(stream.Length);
                 stream.Flush(flushToDisk: true);
             }
-            File.Move(temporary, path, overwrite: true);
+            if (preserveOriginal)
+            {
+                string backup = Path.Combine(directory, AppDataFiles.SettingsBackupName(writeId));
+                try { File.Replace(temporary, fullPath, backup); }
+                catch (FileNotFoundException) { File.Move(temporary, fullPath); }
+                preserveOriginal = false;
+            }
+            else File.Move(temporary, fullPath, overwrite: true);
         }
         finally { File.Delete(temporary); }
+    }
+
+    private static void CheckSize(long length)
+    {
+        if (length > MaximumBytes) throw new IOException("Settings exceed the 4 MiB size limit.");
     }
 
     private void Validate(AppSettings settings)

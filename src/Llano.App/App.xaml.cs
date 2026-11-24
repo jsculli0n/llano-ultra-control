@@ -63,7 +63,8 @@ public partial class App : Application
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
             settings = new();
-            startupNotice = $"Unable to load saved profiles. {error.Message}";
+            Debug.WriteLine($"Settings load failed ({error.GetType().Name}, 0x{error.HResult:X8}).");
+            startupNotice = "Couldn’t read saved settings. Defaults are active. The next save will keep a copy of the original in the app data folder.";
         }
 
         if (trayLaunch && StartupRegistration.IsInstalled && StartupRegistration.IsElevated)

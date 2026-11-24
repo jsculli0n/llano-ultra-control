@@ -15,6 +15,7 @@ internal sealed record HidIdentity(ushort Revision, ushort UsagePage, ushort Usa
 internal sealed record HidCooler(HidIdentity Identity, string DevicePath)
 {
     private const string Filter = "HID\\VID_374A&PID_B101";
+    private const string InterfacePrefix = @"\\?\hid#vid_374a&pid_b101";
     private const uint BufferSmall = 0x1A;
     private const uint HidSuccess = 0x00110000;
     private bool Supported => Identity is { Revision: 0x1601, UsagePage: 0xFF00, Usage: 1, Input: 65, Output: 65, Feature: 9 };
@@ -22,17 +23,26 @@ internal sealed record HidCooler(HidIdentity Identity, string DevicePath)
     public static IReadOnlyList<HidCooler> Find()
     {
         HidD_GetHidGuid(out Guid hid);
-        while (true)
+        for (int attempt = 0; attempt < 4; attempt++)
         {
             CheckConfigurationResult(CM_Get_Device_Interface_List_Size(out uint length, ref hid, null, 0));
+            if (length > 512 * 1024) throw new IOException("Windows returned an unusually large HID interface list.");
             var paths = new char[length];
             uint status = CM_Get_Device_Interface_List(ref hid, null, paths, length, 0);
             if (status == BufferSmall) continue;
             CheckConfigurationResult(status);
-            return new string(paths).Split('\0', StringSplitOptions.RemoveEmptyEntries)
-                .Where(path => path.StartsWith(@"\\?\hid#vid_374a&pid_b101", StringComparison.OrdinalIgnoreCase))
-                .Select(Inspect).OfType<HidCooler>().ToArray();
+            var matches = new List<HidCooler>();
+            ReadOnlySpan<char> remaining = paths;
+            while (remaining.IndexOf('\0') is > 0 and int separator)
+            {
+                var path = remaining[..separator];
+                if (path.StartsWith(InterfacePrefix, StringComparison.OrdinalIgnoreCase) &&
+                    Inspect(path.ToString()) is { } cooler) matches.Add(cooler);
+                remaining = remaining[(separator + 1)..];
+            }
+            return matches;
         }
+        throw new IOException("The HID device list kept changing. Reconnect the cooler and try again.");
     }
 
     public V12UltraStatus? ReadStatus()
@@ -61,8 +71,10 @@ internal sealed record HidCooler(HidIdentity Identity, string DevicePath)
         for (int attempt = 0; attempt < 3 && isCurrent(); attempt++)
         {
             Thread.Sleep(80);
+            if (!isCurrent()) return null;
             if (ReadStatus(handle, response) is { } status && status.Powered == powered) return status;
         }
+        if (!isCurrent()) return null;
         throw new IOException("The cooler did not confirm its power state.");
     }
 
@@ -78,6 +90,7 @@ internal sealed record HidCooler(HidIdentity Identity, string DevicePath)
         for (int attempt = 0; attempt < 3; attempt++)
         {
             Thread.Sleep(80);
+            if (!isCurrent()) return null;
             var updated = ReadStatus(handle, response);
             if (!isCurrent()) return updated;
             if (updated is null || (rpm is int target && (!updated.SoftwareControl || updated.SettingRpm != target))) continue;

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using Llano.Core;
 
@@ -20,26 +21,39 @@ public partial class MainWindow
         bool attemptedWrite = false;
         try
         {
-            var (devices, status, overrideDetected) = await Task.Run(() =>
+            var (devices, status, overrideDetected, writeConfirmed) = await Task.Run(() =>
             {
                 var (devices, observed) = coolerDiscovery.Poll(clock.Elapsed);
-                if (devices.Count != 1) return (devices, observed, false);
+                if (devices.Count != 1) return (devices, observed, false, false);
                 var found = devices[0];
-                if (observed is null || found.DevicePath != expected || !IsCurrent()) return (devices, observed, false);
+                if (observed is null || found.DevicePath != expected || !IsCurrent()) return (devices, observed, false, false);
                 if (observed is { Powered: true, SoftwareControl: false } && found.DevicePath == owned)
-                    return (devices, observed, true);
+                    return (devices, observed, true, false);
                 if (!observed.Powered || (lighting is null && (rpm is null || observed.SoftwareControl && observed.SettingRpm == rpm)))
-                    return (devices, observed, false);
+                    return (devices, observed, false, false);
                 (devices, observed) = coolerDiscovery.Poll(clock.Elapsed, force: true);
                 if (devices.Count != 1 || devices[0].DevicePath != expected || observed is not { Powered: true } || !IsCurrent())
-                    return (devices, observed, false);
+                    return (devices, observed, false, false);
                 found = devices[0];
-                if (!observed.SoftwareControl && found.DevicePath == owned) return (devices, observed, true);
-                lock (usbWriteGate)
+                if (!observed.SoftwareControl && found.DevicePath == owned) return (devices, observed, true, false);
+                try
                 {
-                    if (!IsCurrent()) return (devices, observed, false);
-                    attemptedWrite = true;
-                    return (devices, found.Apply(observed, rpm, lighting, IsCurrent), false);
+                    lock (usbWriteGate)
+                    {
+                        if (!IsCurrent()) return (devices, observed, false, false);
+                        attemptedWrite = true;
+                        var applied = found.Apply(observed, rpm, lighting, IsCurrent);
+                        return (devices, applied, false, applied is not null);
+                    }
+                }
+                catch (Exception error) when (error is IOException or Win32Exception)
+                {
+                    if (!IsCurrent()) return (devices, observed, false, false);
+                    (devices, observed) = coolerDiscovery.Poll(clock.Elapsed, force: true);
+                    if (devices.Count != 1 || devices[0].DevicePath != expected || observed is not { Powered: true })
+                        return (devices, observed, false, false);
+                    if (!observed.SoftwareControl && found.DevicePath == owned) return (devices, observed, true, false);
+                    throw;
                 }
             });
             if (closing || powerChanging || !IsCurrent()) return;
@@ -47,6 +61,7 @@ public partial class MainWindow
                 (coolerStatus is not { Powered: true } || cooler?.DevicePath != devices[0].DevicePath))
             {
                 sensorValidAfter = clock.Elapsed;
+                controller.InvalidateConnection();
             }
             cooler = devices.Count == 1 ? devices[0] : null;
             coolerStatus = status;
@@ -57,7 +72,7 @@ public partial class MainWindow
                 controller.Update(clock.Elapsed, NoTemperatures, connected: true, physicalOverride: true);
                 pendingLighting ??= lighting;
             }
-            else if (attemptedWrite && IsCurrent() && status is not null)
+            else if (writeConfirmed)
             {
                 if (rpm.HasValue) controlledDevice = cooler?.DevicePath;
                 if (lighting is not null) RememberLighting(lighting);
@@ -79,7 +94,7 @@ public partial class MainWindow
         catch (Exception error)
         {
             if (closing || powerChanging || !IsCurrent()) return;
-            if (attemptedWrite && IsCurrent())
+            if (attemptedWrite)
             {
                 if (rpm.HasValue) PauseControl();
                 ShowMessage($"Couldn’t apply the cooler settings. {error.Message}");
@@ -130,7 +145,9 @@ public partial class MainWindow
     {
         try
         {
-            Clipboard.SetText($"Llano Ultra Control {ReleaseVersion}\n{HidDetails.Text}\n{monitor.Snapshot.Status}\n{CaptureLog.Text}".TrimEnd());
+            string historyStatus = historySaveFailed ? "\nCooling history could not be saved. Check disk space and app data permissions." :
+                historyReadFailed ? "\nCooling history could not be opened. Check app data permissions." : "";
+            Clipboard.SetText($"Llano Ultra Control {ReleaseVersion}\n{HidDetails.Text}\n{SensorSource.Text}{historyStatus}\n{CaptureLog.Text}".TrimEnd());
             ShowMessage("Copied USB and sensor diagnostics.");
         }
         catch (System.Runtime.InteropServices.ExternalException) { ShowMessage("Clipboard busy. Try copying again."); }

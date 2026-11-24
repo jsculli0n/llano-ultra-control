@@ -5,6 +5,7 @@ artifacts/
 .dotnet*.zip
 .mythcool*
 .nuget/
+.native-tools/
 *.pcap
 *.pcapng
 *.etl

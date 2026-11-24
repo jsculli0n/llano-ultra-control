@@ -3,7 +3,7 @@
            UpgradeCode="2148F8B8-9775-483C-8D49-418EFB61ADE9" Scope="perMachine">
     <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of Llano Ultra Control is already installed." />
     <MediaTemplate EmbedCab="yes" />
-    <Icon Id="LlanoUltraControl.exe" SourceFile="$(var.PublishDir)\LlanoUltraControl.exe" />
+    <Icon Id="LlanoUltraControl.exe" SourceFile="$(var.LauncherExe)" />
     <Property Id="ARPPRODUCTICON" Value="LlanoUltraControl.exe" />
     <!-- Let users close the tray app themselves if its files are in use. -->
     <Property Id="MSIRESTARTMANAGERCONTROL" Value="DisableShutdown" />
@@ -23,10 +23,13 @@
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Llano Ultra Control">
         <Component Id="MainExecutable" Guid="*">
-          <File Id="AppExe" Source="$(var.PublishDir)\LlanoUltraControl.exe" KeyPath="yes">
+          <File Id="AppExe" Source="$(var.LauncherExe)" KeyPath="yes">
             <Shortcut Id="StartMenuLink" Directory="ProgramMenuFolder" Name="Llano Ultra Control"
                       WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="LlanoUltraControl.exe" IconIndex="0" />
           </File>
+        </Component>
+        <Component Id="ManagedAppHost" Guid="*">
+          <File Source="$(var.PublishDir)\LlanoUltraControl.exe" Name="LlanoUltraControl.App.exe" KeyPath="yes" />
         </Component>
         <Component Id="DesktopShortcut" Guid="*" Condition="ADDDESKTOPSHORTCUT = 1">
           <Shortcut Id="DesktopLink" Directory="DesktopFolder" Name="Llano Ultra Control" Target="[INSTALLFOLDER]LlanoUltraControl.exe"

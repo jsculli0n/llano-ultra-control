@@ -150,7 +150,7 @@ public partial class MainWindow : Window
             readings = live.Readings;
             temperatureSensors = live.TemperatureSensors;
         }
-        UpdateTelemetry(live, now);
+        bool usingHelperReadings = UpdateTelemetry(live, now);
         var cpu = PreferredTemperature(Component.Cpu);
         var gpu = PreferredTemperature(Component.Gpu);
         hasUsableCpuTemperature = cpu is { Value: double cpuTemperature } &&
@@ -163,7 +163,7 @@ public partial class MainWindow : Window
         GpuTile.ToolTip = gpu?.Caption;
         UpdateSensorSummaries(cpu, gpu, live != SensorSnapshot.Empty);
         SensorSource.Text = simulate ? "Simulated CPU and GPU inputs" :
-            telemetry.Snapshot is { Reply.Cpu.Length: > 0 } && cpu is not null ? "CPU readings available through the telemetry helper." : live.Status;
+            usingHelperReadings ? "CPU readings available through the telemetry helper." : live.Status;
         UpdateSensorSelectors();
         if (IsVisible && Navigation.SelectedItem == SensorsPage) UpdateReadingsGrid();
 

@@ -72,34 +72,49 @@ public partial class MainWindow
         TelemetrySetup.BringIntoView();
     }
 
-    private void UpdateTelemetry(SensorSnapshot local, TimeSpan now)
+    private bool UpdateTelemetry(SensorSnapshot local, TimeSpan now)
     {
         var request = TelemetryRequest.None;
         if (UseTelemetryHelper)
         {
-            bool localHasTemperature = local.TemperatureSensors.Any(r => r.Component == Component.Cpu && r.Value.HasValue &&
-                TemperatureRank(r) < int.MaxValue && IsFresh(r));
+            bool localHasTemperature = local.TemperatureSensors.Any(r => r.Component == Component.Cpu &&
+                TemperatureRank(r) < int.MaxValue && TemperatureIsFresh(r));
             var overlay = settings.StatsOverlay;
             bool needTemperature = IsVisible && WindowState != WindowState.Minimized ||
                 runningProfile is { Mode: not FanMode.Fixed } && controller.Enabled ||
                 overlay.Enabled && overlay.Metrics.HasFlag(StatsMetrics.CpuTemperature);
             bool needClock = overlay.Enabled && overlay.Metrics.HasFlag(StatsMetrics.CpuClock);
-            if ((needTemperature && !localHasTemperature) || (needClock && ReadHardwareCpuClock(local.Readings) is null))
+            bool missingProfileCpu = controller.Enabled && runningProfile is { Mode: FanMode.SharedCurve or FanMode.SeparateCurves } custom &&
+                custom.ActiveSensors.Any(id => IsHardwareCpuSensor(id) &&
+                    !local.TemperatureSensors.Any(r => r.Id == id && TemperatureIsFresh(r)));
+            if (missingProfileCpu || needTemperature && !localHasTemperature ||
+                needClock && ReadHardwareCpuClock(local.Readings) is null)
                 request |= TelemetryRequest.Cpu;
             if (WantsFps) request |= TelemetryRequest.Fps;
         }
         telemetry.Request(request);
-        if (request.HasFlag(TelemetryRequest.Cpu) && telemetry.Snapshot is { } sampled)
+        bool usingHelperReadings = false;
+        if (request.HasFlag(TelemetryRequest.Cpu) && telemetry.Snapshot is { } sampled && sampled.ReceivedAt <= now)
         {
             var extra = sampled.Reply.Cpu
-                .Where(r => r.Component == Component.Cpu && r.SampledAt >= TimeSpan.Zero)
+                .Where(r => r.SampledAt <= TimeSpan.FromSeconds(5) && (r.Unit != "°C" || r.Value is >= -40 and <= 150))
                 .Select(r => r with { SampledAt = sampled.ReceivedAt - r.SampledAt })
-                .Where(r => now - r.SampledAt <= TimeSpan.FromSeconds(5) && r.SampledAt >= sensorValidAfter)
+                .Where(IsFresh)
                 .ToArray();
-            var ids = extra.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
-            readings = [.. readings.Where(r => !ids.Contains(r.Id)), ..extra];
-            temperatureSensors = readings.Where(r => r.Unit == "°C").ToArray();
+            if (extra.Length > 0)
+            {
+                var ids = extra.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+                readings = [.. readings.Where(r => !ids.Contains(r.Id)), ..extra];
+                temperatureSensors = readings.Where(r => r.Unit == "°C").ToArray();
+                usingHelperReadings = true;
+            }
         }
         UpdateHelperStatus();
+        return usingHelperReadings;
     }
+
+    private static bool IsHardwareCpuSensor(string id) =>
+        id.StartsWith("lhm:/intelcpu/", StringComparison.Ordinal) ||
+        id.StartsWith("lhm:/amdcpu/", StringComparison.Ordinal) ||
+        id.StartsWith("lhm:/genericcpu/", StringComparison.Ordinal);
 }

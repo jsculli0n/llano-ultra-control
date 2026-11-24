@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Security.Cryptography;
@@ -11,7 +10,7 @@ internal sealed class FpsCapture(bool helperSession = false)
 {
     private static readonly string Executable = Path.Combine(AppContext.BaseDirectory, "PresentMon.exe");
     private readonly object gate = new();
-    private readonly Dictionary<string, (int Count, double Milliseconds)> chains = new(StringComparer.Ordinal);
+    private readonly Dictionary<ulong, (int Count, double Milliseconds)> chains = new();
     private uint foreground;
     private CancellationTokenSource? request;
     private Task worker = Task.CompletedTask;
@@ -28,6 +27,7 @@ internal sealed class FpsCapture(bool helperSession = false)
             _ = worker.ContinueWith(_ => stopping.Dispose(), TaskScheduler.Default);
             request = null;
             lock (gate) chains.Clear();
+            Volatile.Write(ref status, null);
             return;
         }
         var source = new CancellationTokenSource();
@@ -48,7 +48,7 @@ internal sealed class FpsCapture(bool helperSession = false)
         {
             if (foreground != active)
             {
-                foreground = active;
+                Volatile.Write(ref foreground, active);
                 chains.Clear();
             }
             if (chains.Count == 0) return null;
@@ -71,10 +71,11 @@ internal sealed class FpsCapture(bool helperSession = false)
             Volatile.Write(ref status, "FPS requires the PresentMon helper included with the packaged app.");
             return;
         }
-        using var identity = WindowsIdentity.GetCurrent();
-        string session = "LlanoUltraControl-FPS-" + identity.User!.Value + (helperSession ? "-Helper" : "");
         try
         {
+            using var identity = WindowsIdentity.GetCurrent();
+            using var app = Process.GetCurrentProcess();
+            string session = $"LlanoUltraControl-FPS-{identity.User!.Value}-{app.SessionId}" + (helperSession ? "-Helper" : "");
             using var binary = File.OpenRead(Executable);
             if (Convert.ToHexString(SHA256.HashData(binary)) != "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF")
             {
@@ -83,30 +84,23 @@ internal sealed class FpsCapture(bool helperSession = false)
             }
             Volatile.Write(ref status, null);
             using var process = Process.Start(Command("--session_name", session, "--stop_existing_session", "--output_stdout",
-                "--no_console_stats", "--no_track_input", "--no_track_gpu", "--v2_metrics", "--exclude", "LlanoUltraControl.exe"));
+                "--no_console_stats", "--no_track_input", "--no_track_gpu", "--v2_metrics",
+                "--exclude", StartupRegistration.LauncherName, "--exclude", StartupRegistration.AppHostName));
             if (process is null) return;
-            var errors = process.StandardError.ReadToEndAsync();
+            var accessDenied = ReadAccessDeniedAsync(process.StandardError, token);
             try
             {
-                int processColumn = -1, chainColumn = -1, timeColumn = -1;
+                PresentMonCsv format = default;
                 while (await process.StandardOutput.ReadLineAsync(token) is { } line)
                 {
-                    if (processColumn < 0 || line.StartsWith("Application,", StringComparison.Ordinal))
-                    {
-                        string[] fields = line.Split(',');
-                        processColumn = Array.IndexOf(fields, "ProcessID");
-                        chainColumn = Array.IndexOf(fields, "SwapChainAddress");
-                        timeColumn = Array.IndexOf(fields, "DisplayedTime");
-                    }
-                    else if (chainColumn >= 0 && timeColumn >= 0)
-                    {
-                        ReadFrame(line, processColumn, chainColumn, timeColumn);
-                    }
+                    if (line.StartsWith("Application,ProcessID,SwapChainAddress,", StringComparison.Ordinal))
+                        PresentMonCsv.TryReadHeader(line, out format);
+                    else
+                        ReadFrame(line, format);
                 }
                 await process.WaitForExitAsync(token);
-                string diagnostic = await errors;
-                Debug.WriteLine(diagnostic);
-                Volatile.Write(ref status, diagnostic.Contains("access denied", StringComparison.OrdinalIgnoreCase)
+                Debug.WriteLine($"PresentMon exited with code {process.ExitCode}.");
+                Volatile.Write(ref status, await accessDenied
                     ? StartupRegistration.IsElevated ? "Windows denied access to FPS capture."
                         : StartupRegistration.IsInstalled
                         ? "Windows denied FPS capture. Go to Settings → General and enable sensor and FPS access."
@@ -115,36 +109,61 @@ internal sealed class FpsCapture(bool helperSession = false)
             }
             finally
             {
-                if (!process.HasExited)
-                {
-                    using var stop = Process.Start(Command("--session_name", session, "--terminate_existing_session"));
-                    using var limit = new CancellationTokenSource(TimeSpan.FromMilliseconds(900));
-                    try { await process.WaitForExitAsync(limit.Token); }
-                    catch (OperationCanceledException) { if (!process.HasExited) process.Kill(); }
-                }
+                await StopCaptureAsync(process, session);
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-        catch (Exception error) when (error is Win32Exception or IOException or InvalidOperationException)
+        catch (Exception error) when (error is Win32Exception or IOException or InvalidOperationException or UnauthorizedAccessException)
         {
             Debug.WriteLine(error);
             Volatile.Write(ref status, "FPS capture couldn’t start.");
         }
     }
 
-    private void ReadFrame(string line, int processColumn, int chainColumn, int timeColumn)
+    private void ReadFrame(string line, PresentMonCsv format)
     {
-        var fields = line.Split(',');
-        if (fields.Length <= Math.Max(processColumn, Math.Max(chainColumn, timeColumn)) ||
-            !uint.TryParse(fields[processColumn], out uint processId) ||
-            !double.TryParse(fields[timeColumn], CultureInfo.InvariantCulture, out double interval) ||
-            !double.IsFinite(interval) || interval is <= 0 or > 2500) return;
+        uint active = Volatile.Read(ref foreground);
+        if (!format.TryReadFrame(line, active, out ulong chain, out double interval)) return;
         lock (gate)
         {
-            if (processId != foreground) return;
-            string chain = fields[chainColumn];
+            if (active != foreground) return;
             var last = chains.GetValueOrDefault(chain);
             chains[chain] = (last.Count + 1, last.Milliseconds + interval);
+        }
+    }
+
+    private static async Task<bool> ReadAccessDeniedAsync(StreamReader errors, CancellationToken token)
+    {
+        bool denied = false;
+        try
+        {
+            while (await errors.ReadLineAsync(token) is { } line)
+                denied |= line.Contains("access denied", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (IOException error) { Debug.WriteLine($"PresentMon diagnostics could not be read (0x{error.HResult:X8})."); }
+        return denied;
+    }
+
+    private static async Task StopCaptureAsync(Process process, string session)
+    {
+        if (process.HasExited) return;
+        Process? stop = null;
+        using var limit = new CancellationTokenSource(TimeSpan.FromMilliseconds(900));
+        try
+        {
+            stop = Process.Start(Command("--session_name", session, "--terminate_existing_session"));
+            await process.WaitForExitAsync(limit.Token);
+            if (stop is not null) await stop.WaitForExitAsync(limit.Token);
+        }
+        catch (OperationCanceledException) when (limit.IsCancellationRequested) { }
+        finally
+        {
+            using (stop)
+            {
+                try { if (!process.HasExited) process.Kill(); }
+                finally { if (stop is { HasExited: false }) stop.Kill(); }
+            }
         }
     }
 

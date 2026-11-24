@@ -1,5 +1,9 @@
 # Release notes
 
+## 1.0.9
+
+- The MSI starts the telemetry helper and other elevated app operations through a native launcher that replaces the inherited environment before .NET loads. Existing Windows startup tasks and sensor-access approvals keep working with the same executable path.
+
 ## 1.0.8
 
 - Fixed the desktop overlay’s CPU clock staying at the Windows-reported base frequency on some laptops. When hardware clock readings are unavailable, the overlay uses a Windows performance-counter estimate that follows boost and marks it with **≈**. The estimate works with standard permissions.

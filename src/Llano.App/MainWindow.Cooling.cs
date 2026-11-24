@@ -112,7 +112,7 @@ public partial class MainWindow
     {
         if (!controller.Enabled || runningProfile is not { Mode: not FanMode.Fixed } profile) return NoTemperatures;
         if (profile.Mode != FanMode.Automatic)
-            return temperatureSensors.Where(r => IsFresh(r) && r.Value.HasValue)
+            return temperatureSensors.Where(TemperatureIsFresh)
                 .ToDictionary(r => r.Id, r => new Temperature(r.Value!.Value, r.SampledAt));
 
         var inputs = new Dictionary<string, Temperature>(2);

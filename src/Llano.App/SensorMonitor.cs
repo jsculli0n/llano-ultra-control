@@ -42,9 +42,16 @@ internal sealed class SensorMonitor
             IsMotherboardEnabled = !cpuOnly,
             IsStorageEnabled = !cpuOnly
         };
-        string? error = null;
-        try { computer.Open(); }
-        catch (Exception e) { error = e.Message; }
+        bool opened = false;
+        try
+        {
+            computer.Open();
+            opened = true;
+        }
+        catch (Exception error)
+        {
+            Debug.WriteLine($"LibreHardwareMonitor initialization failed ({error.GetType().Name}, 0x{error.HResult:X8}).");
+        }
 
         try
         {
@@ -53,7 +60,7 @@ internal sealed class SensorMonitor
             {
                 var readings = new List<SensorReading>();
                 var sampledAt = clock.Elapsed;
-                if (error is null)
+                if (opened)
                 {
                     try
                     {
@@ -80,10 +87,12 @@ internal sealed class SensorMonitor
                 var unique = readings.DistinctBy(reading => reading.Id)
                     .OrderBy(reading => reading.Component).ThenBy(reading => reading.Hardware)
                     .ThenBy(reading => reading.Name).ToArray();
-                string status = shared ? "LibreHardwareMonitor and HWiNFO shared memory" : "LibreHardwareMonitor";
+                string status = opened
+                    ? shared ? "LibreHardwareMonitor and HWiNFO shared memory" : "LibreHardwareMonitor"
+                    : shared ? "HWiNFO shared memory. LibreHardwareMonitor could not start." : "LibreHardwareMonitor could not start.";
                 if (!unique.Any(r => r is { Component: Component.Cpu, Unit: "°C", Value: not null }))
                     status += " · CPU temperature unavailable. See Sensors for help.";
-                Volatile.Write(ref snapshot, new(unique, error is null ? status : $"LibreHardwareMonitor: {error}. {status}"));
+                Volatile.Write(ref snapshot, new(unique, status));
             } while (await timer.WaitForNextTickAsync(stop).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }

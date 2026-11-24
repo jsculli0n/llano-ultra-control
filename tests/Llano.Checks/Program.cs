@@ -1,5 +1,8 @@
 using Llano.App;
 using Llano.Core;
+using System.Runtime.InteropServices;
+
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
 if (args is ["--probe"] or ["--listen"])
 {
@@ -191,14 +194,47 @@ for (int second = 0; second <= 600; second++)
     history.Record(new(historyStart.AddSeconds(second), 800, 51, 42), out _);
 Equal(61, history.View(historyStart.AddMinutes(10), TimeSpan.FromMinutes(1)).Length, "short history keeps per-second readings");
 Equal(61, history.Archive().Length, "history archives one sample every ten seconds");
+Equal(331, history.View(historyStart.AddMinutes(10), TimeSpan.FromHours(24)).Length,
+    "a long view joins retained and detailed samples without duplication");
 var restoredHistory = new CoolingHistory();
 restoredHistory.Load(history.Archive(), historyStart.AddMinutes(10));
 Equal(61, restoredHistory.Archive().Length, "history survives restart");
+restoredHistory.Load(history.Archive(), historyStart.AddMinutes(10));
+Equal(61, restoredHistory.Archive().Length, "loading replaces the prior archive");
+Equal(historyStart.AddMinutes(10), restoredHistory.View(historyStart.AddMinutes(10), At(60))[^1].At,
+    "the most recent persisted point is included in the view");
+Equal(null, CoolingHistory.Nearest([], historyStart), "no nearest point in an empty history");
+var archive = history.Archive();
+Equal(archive[0], CoolingHistory.Nearest(archive, historyStart.AddSeconds(-5)), "nearest sample before history");
+Equal(archive[1], CoolingHistory.Nearest(archive, historyStart.AddSeconds(15)), "nearest sample favours the earlier point on a tie");
+Equal(archive[2], CoolingHistory.Nearest(archive, historyStart.AddSeconds(16)), "nearest sample after the cursor");
+Equal(archive[^1], CoolingHistory.Nearest(archive, historyStart.AddSeconds(605)), "nearest sample after history");
+Equal(false, history.Record(new(historyStart.AddSeconds(550), 900, 54, 40), out bool archiveChanged),
+    "a clock correction respects the sample interval");
+Equal(true, archiveChanged, "the corrected archive needs to be saved");
+Equal(56, history.Archive().Length, "clock correction preserves history before the corrected time");
+Equal(true, history.Record(new(historyStart.AddSeconds(551), 900, 54, 40), out _), "recording resumes after the clock correction");
+Equal(historyStart.AddSeconds(551), history.View(historyStart.AddSeconds(551), TimeSpan.FromHours(24))[^1].At,
+    "future samples are removed when the clock moves back");
 restoredHistory.Record(new(historyStart.AddDays(2), null, null, null), out _);
 Equal(1, restoredHistory.Archive().Length, "history discards samples older than a day");
 Equal(false, new StatsOverlaySettings().Enabled, "stats overlay is opt-in");
 
-string testSettings = Path.Combine(Path.GetTempPath(), $"Llano-check-{Guid.NewGuid():N}.json");
+Equal(false, PresentMonCsv.TryReadHeader("Application,ProcessID,SwapChainAddress,FrameTime", out _),
+    "a PresentMon header needs displayed time");
+Equal(true, PresentMonCsv.TryReadHeader("Application,ProcessID,SwapChainAddress,PresentRuntime,DisplayedTime,AnimationError", out var csv),
+    "recognise a PresentMon v2 header");
+Equal(true, csv.TryReadFrame("Game, Deluxe.exe,321,0x1FE,DXGI,16.5,NA", 321, out ulong chain, out double interval),
+    "read a foreground frame with a comma in the application name");
+Equal(0x1FEUL, chain, "parse the numeric swap chain address");
+Equal(16.5, interval, "parse displayed time with invariant culture");
+Equal(false, csv.TryReadFrame("Game.exe,321,0x1FE,DXGI,16.5,NA", 123, out _, out _), "ignore background frames");
+Equal(false, csv.TryReadFrame("Game.exe,321,0x1FE,DXGI,NA,NA", 321, out _, out _), "ignore frames that were not displayed");
+Equal(false, csv.TryReadFrame("Game.exe,321,0x1FE,DXGI,2501,NA", 321, out _, out _), "ignore implausible frame intervals");
+Equal(false, csv.TryReadFrame("Game.exe,321,0x1FE,DXGI,16.5", 321, out _, out _), "reject a truncated frame");
+
+string settingsCheckDirectory = Directory.CreateTempSubdirectory("Llano-check-").FullName;
+string testSettings = Path.Combine(settingsCheckDirectory, "settings.json");
 try
 {
     var store = new SettingsStore(testSettings, limits);
@@ -237,8 +273,33 @@ try
     Equal(new LightingPreset("Evening", newLight), updated.LightingPresets.Single(), "persist a custom lighting preset");
     store.Save(new());
     Equal("Balanced", store.Load().SelectedProfile, "atomically replace settings");
+    const string unreadable = """{"Version":2,"SelectedProfile":"Keep my old settings"}""";
+    File.WriteAllText(testSettings, unreadable);
+    Throws<InvalidDataException>(() => store.Load(), "reject unsupported settings versions");
+    store.Save(new());
+    Equal(unreadable, File.ReadAllText(Directory.GetFiles(settingsCheckDirectory, "settings-recovery-*.json").Single()),
+        "preserve unreadable settings before the first save");
+    store.Save(new() { ManualRpm = 1800 });
+    Equal(1, Directory.GetFiles(settingsCheckDirectory, "settings-recovery-*.json").Length,
+        "a normal save does not create another recovery copy");
+    Equal(1800, store.Load().ManualRpm, "settings work after recovery");
+    using (var oversized = File.Open(testSettings, FileMode.Create)) oversized.SetLength(4 * 1024 * 1024 + 1);
+    Throws<IOException>(() => store.Load(), "bound the settings file size before deserialising");
+    store.Save(new());
+    Equal(true, Directory.GetFiles(settingsCheckDirectory, "settings-recovery-*.json").Any(p => new FileInfo(p).Length > 4 * 1024 * 1024),
+        "preserve oversized settings for recovery");
+
+    string historyFile = Path.Combine(settingsCheckDirectory, AppDataFiles.HistoryName);
+    Equal(0, CoolingHistoryFile.Read(historyFile).Length, "missing history is empty");
+    CoolingSample[] points = [new(historyStart, 0, null, 48), new(historyStart.AddSeconds(10), 1200, 55, null)];
+    CoolingHistoryFile.Write(historyFile, points);
+    Equal(true, points.SequenceEqual(CoolingHistoryFile.Read(historyFile)), "round-trip the version 1 history format");
+    CoolingHistoryFile.Write(historyFile, []);
+    Equal(0, CoolingHistoryFile.Read(historyFile).Length, "an empty archive replaces older persisted data");
+    File.WriteAllBytes(historyFile, [1, 0, 0, 0, 1]);
+    Equal(0, CoolingHistoryFile.Read(historyFile).Length, "ignore a truncated history file");
 }
-finally { File.Delete(testSettings); }
+finally { AppDataFiles.RemoveSettings(settingsCheckDirectory); }
 
 string settingsDirectory = Path.Combine(Path.GetTempPath(), $"Llano-uninstall-check-{Guid.NewGuid():N}");
 Directory.CreateDirectory(settingsDirectory);
@@ -274,13 +335,20 @@ finally
     }
 }
 
-Console.WriteLine("All fan-control and settings checks passed.");
+Console.WriteLine("All fan-control, USB protocol, settings, history and FPS parsing checks passed.");
 return 0;
 
 static void Equal<T>(T expected, T actual, string name)
 {
     if (!EqualityComparer<T>.Default.Equals(expected, actual))
         throw new InvalidOperationException($"{name}: expected {expected}, got {actual}.");
+}
+
+static void Throws<T>(Action action, string name) where T : Exception
+{
+    try { action(); }
+    catch (T) { return; }
+    throw new InvalidOperationException($"{name}: expected {typeof(T).Name}.");
 }
 
 static TimeSpan At(int seconds) => TimeSpan.FromSeconds(seconds);
